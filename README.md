@@ -10,8 +10,8 @@ Instance Manager
 - Can restart Instances and Save Worlds when requested Manually
 
 
-
 TO DO
-- Web Interface -> Instance restart, Save World
-- Script Auto update
-- Plugin Auto update
+- Web Interface ->
+  - Proper CPU and RAM Usage of Instances Board
+  - CPU/RAM NaN after Downtime
+  - Plugin Update Button on each IM

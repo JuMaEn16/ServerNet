@@ -210,25 +210,19 @@ online-mode=false
 		return fmt.Errorf("failed copying paper.jar: %w", err)
 	}
 
-	pluginSrc := "LunexiaMain.jar"
-	pluginDst := filepath.Join(filepath.Join(dir, "plugins"), "LunexiaMain.jar")
+	// If you now have a local "plugins" folder, copy it entirely into the server dir.
+	localPluginsFolder := "plugins" // <-- local plugins folder you prepared
+	serverPluginsFolder := filepath.Join(dir, "plugins")
 
-	axiomPlSrc := "AxiomPaper.jar"
-	axiomPlDst := filepath.Join(filepath.Join(dir, "plugins"), "AxiomPaper.jar")
-
-	if err := os.MkdirAll(filepath.Join(dir, "plugins"), 0755); err != nil {
-		return err
-	}
-	if err := copyFile(pluginSrc, pluginDst); err != nil {
-		return fmt.Errorf("failed copying LunexiaMain.jar: %w", err)
-	}
-	if err := copyFile(axiomPlSrc, axiomPlDst); err != nil {
-		return fmt.Errorf("failed copying AxiomPaper.jar: %w", err)
+	// Make sure destination plugins folder exists; copyDir will create it anyway.
+	if err := copyDir(localPluginsFolder, serverPluginsFolder); err != nil {
+		return fmt.Errorf("failed copying plugins folder: %w", err)
 	}
 
+	// Write LunexiaMain config (plugin folder)
 	configLunexia := fmt.Sprintf(`type: "%s"`, name)
 
-	lunexiaDst := filepath.Join(filepath.Join(dir, "plugins"), "LunexiaMain")
+	lunexiaDst := filepath.Join(serverPluginsFolder, "LunexiaMain")
 	if err := os.MkdirAll(lunexiaDst, 0755); err != nil {
 		return err
 	}
@@ -248,6 +242,63 @@ online-mode=false
 	}
 
 	fmt.Println("[World] Ready!")
+	return nil
+}
+
+func copyDir(src string, dst string) error {
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("read dir %s: %w", src, err)
+	}
+
+	// create destination root
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", dst, err)
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		info, err := entry.Info()
+		if err != nil {
+			return fmt.Errorf("stat %s: %w", srcPath, err)
+		}
+
+		if info.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			in, err := os.Open(srcPath)
+			if err != nil {
+				return fmt.Errorf("open %s: %w", srcPath, err)
+			}
+			// ensure file is closed promptly
+			func() {
+				defer in.Close()
+				out, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode())
+				if err != nil {
+					err = fmt.Errorf("create %s: %w", dstPath, err)
+					// reassign to outer err for return
+					panic(err)
+				}
+				defer out.Close()
+
+				if _, err := io.Copy(out, in); err != nil {
+					err = fmt.Errorf("copy %s -> %s: %w", srcPath, dstPath, err)
+					panic(err)
+				}
+			}()
+			// handle panic used for early-return inside closure
+			if r := recover(); r != nil {
+				if e, ok := r.(error); ok {
+					return e
+				}
+				return fmt.Errorf("unknown error copying file %s", srcPath)
+			}
+		}
+	}
 	return nil
 }
 

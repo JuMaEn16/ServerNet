@@ -17,15 +17,17 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 const (
 	repoOwner       = "JuMaEn16"
 	repoName        = "ServerNet"
-	watchedSubdir   = "instance_manager"
+	watchedSubdir   = "server_main/server_manager"
 	versionFileName = ".current_version"
 	httpTimeout     = 60 * time.Second
-	token           = "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"
+	token           = ""
 )
 
 var (
@@ -49,6 +51,16 @@ func authHeader() string {
 
 func main() {
 	log.SetFlags(0)
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		log.Fatal("GITHUB_TOKEN not found in environment")
+	}
 
 	localVersion, _ := readLocalVersion()
 

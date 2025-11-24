@@ -22,6 +22,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 )
@@ -46,7 +47,7 @@ var (
 const (
 	proxyApiHost    = "http://172.30.0.1:8081"
 	defaultFallback = "lobby"
-	token           = "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" // NOTE: Hardcoded token
+	token           = "" // NOTE: Hardcoded token
 	repoWorlds      = "JuMaEn16/lunexia-worlds"
 )
 
@@ -1281,6 +1282,16 @@ func restartWorldHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
+	err := godotenv.Load("../.env")
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		log.Fatal("GITHUB_TOKEN not found in environment")
+	}
 
 	http.HandleFunc("/system", systemHandler)
 	http.HandleFunc("/start-server", startServerHandler)

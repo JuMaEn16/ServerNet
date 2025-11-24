@@ -1,6 +1,6 @@
 import React, { useEffect, useState, type JSX } from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
-import { Play, RefreshCw, Trash2, Save } from "lucide-react";
+import { Play, RefreshCw, Trash2, Save, CloudDownload, Loader2 } from "lucide-react";
 
 /* ---------------------- Types ---------------------- */
 // Updated Instance type to match Go struct
@@ -259,22 +259,44 @@ export default function InstancesPage(): JSX.Element {
   // generic action (start/stop/restart) at manager-level
   // NOTE: The Go backend file does not have an endpoint for /api/action
   // This function will fail until that endpoint is created.
-  const handleInstanceAction = async (im: InstanceManager, instance: Instance, action: "restart" | "save") => {
-    try {
-      // optimistic UI could be added; here we call API and show toast
-      console.log("Logging: " + JSON.stringify({ domain: im.domain, name: instance.name, action }));
+  const handleInstanceAction = async (im: InstanceManager, instance: Instance | null, action: "restart" | "save" | "pluginUpdate") => {
 
-      const res = await fetch("/api/action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }, // Corrected "jsoSn"
-        body: JSON.stringify({ domain: im.domain, name: instance.name, action }),
-      });
-      if (!res.ok) throw new Error(`Action failed ${res.status}`);
-      setToast({ type: "ok", text: `${action} requested` });
-      // optional refresh
-      fetchInstanceManagers();
-    } catch (err: any) {
-      setToast({ type: "error", text: `Action error: ${err.message || err}` });
+    if (action == "pluginUpdate") {
+      try {
+        // optimistic UI could be added; here we call API and show toast
+        console.log("Logging: " + JSON.stringify({ domain: im.domain, action }));
+
+        const res = await fetch("/api/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }, // Corrected "jsoSn"
+          body: JSON.stringify({ domain: im.domain, action }),
+        });
+        if (!res.ok) throw new Error(`Action failed ${res.status}`);
+        setToast({ type: "ok", text: `${action} requested` });
+        // optional refresh
+        fetchInstanceManagers();
+      } catch (err: any) {
+        setToast({ type: "error", text: `Action error: ${err.message || err}` });
+      }
+    } else {
+      if (instance != null) {
+        try {
+          // optimistic UI could be added; here we call API and show toast
+          console.log("Logging: " + JSON.stringify({ domain: im.domain, name: instance.name, action }));
+
+          const res = await fetch("/api/action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }, // Corrected "jsoSn"
+            body: JSON.stringify({ domain: im.domain, name: instance.name, action }),
+          });
+          if (!res.ok) throw new Error(`Action failed ${res.status}`);
+          setToast({ type: "ok", text: `${action} requested` });
+          // optional refresh
+          fetchInstanceManagers();
+        } catch (err: any) {
+          setToast({ type: "error", text: `Action error: ${err.message || err}` });
+        }
+      }
     }
   };
 
@@ -432,12 +454,14 @@ function ManagerCard({
   im: InstanceManager;
   index: number;
   onDelete: () => void;
-  onInstanceAction(instance: Instance, action: "restart" | "save"): void;
+  onInstanceAction(instance: Instance | null, action: "restart" | "save" | "pluginUpdate"): void;
 }) {
   const cpu = Math.min(100, Math.round(im.cpu_percent));
   const ram = Math.min(100, Math.round((im.ram_used_mb / Math.max(1, im.ram_total_mb)) * 100));
   const animatedCPU = useAnimatedNumber(cpu);
   const animatedRAM = useAnimatedNumber(ram);
+
+  const [isUpdating, setIsUpdating] = useState(false);
 
   return (
     <motion.div
@@ -446,8 +470,30 @@ function ManagerCard({
       transition={{ duration: 0.35, delay: index * 0.06 }}
       className="relative p-8 bg-gradient-to-br from-black/50 to-purple-950/50 rounded-2xl shadow-xl border border-purple-950/40 flex flex-col md:flex-row gap-6"
     >
-      {/* Delete button */}
-      <div className="absolute right-3 bottom-3 z-10">
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+        <button
+          onClick={() => {
+            setIsUpdating(true)
+            onInstanceAction(null, "pluginUpdate")}
+          }
+          aria-label={`Update plugins for ${im.name}`}
+          title={`Update plugins for ${im.name}`}
+          disabled={isUpdating}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-700/90 text-white text-xs hover:brightness-105 transition"
+        >
+          {isUpdating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Updating...</span>
+            </>
+          ) : (
+            <>
+              <CloudDownload size={14} />
+              <span>Update Plugins</span>
+            </>
+          )}
+        </button>
+
         <button
           onClick={onDelete}
           aria-label={`Delete ${im.name}`}
@@ -458,7 +504,6 @@ function ManagerCard({
         </button>
       </div>
 
-      {/* left meta */}
       <div className="md:w-64 flex-shrink-0 text-white">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -479,7 +524,6 @@ function ManagerCard({
           </span>
         </div>
 
-        {/* CPU */}
         <div className="mt-4">
           <div className="flex justify-between text-xs text-purple-200/70 mb-1">
             <span>CPU</span>
@@ -495,7 +539,6 @@ function ManagerCard({
           </div>
         </div>
 
-        {/* RAM */}
         <div className="mt-4">
           <div className="flex justify-between text-xs text-purple-200/70 mb-1">
             <span>RAM</span>
@@ -512,7 +555,6 @@ function ManagerCard({
         </div>
       </div>
 
-      {/* instance list */}
       <div className="flex-1 space-y-3">
         {(!im.instances || im.instances.length === 0) && (
           <div className="text-xs text-purple-200/60 italic p-4 bg-black/20 rounded">
@@ -529,7 +571,7 @@ function ManagerCard({
               <div
                 className={`w-3 h-3 rounded-full ${
                   inst.status == "running" ? "bg-green-400" : "bg-red-500"
-                } ${inst.status == "running" ? "animate-pulse" : ""}`} // Only pulse if running
+                } ${inst.status == "running" ? "animate-pulse" : ""}`}
               />
               <div>
                 <p className="text-base font-semibold truncate">{inst.name}</p>
@@ -537,11 +579,8 @@ function ManagerCard({
               </div>
             </div>
 
-            <div className="text-xs text-purple-200/60">
-              {inst.player_count} players
-            </div>
+            <div className="text-xs text-purple-200/60">{inst.player_count} players</div>
 
-            {/* NEW ACTION BUTTONS */}
             <div className="flex gap-2 mt-2 md:mt-0">
               <button
                 onClick={() => onInstanceAction(inst, "restart")}

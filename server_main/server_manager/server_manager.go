@@ -956,6 +956,8 @@ func InstanceActionHandler(w http.ResponseWriter, r *http.Request) {
 		endpoint = "/restart-instance"
 	case "save":
 		endpoint = "/save-instance"
+	case "pluginUpdate":
+		endpoint = "/update-plugins"
 	default:
 		http.Error(w, "invalid action", http.StatusBadRequest)
 		return
@@ -968,7 +970,9 @@ func InstanceActionHandler(w http.ResponseWriter, r *http.Request) {
 		Path:   endpoint,
 	}
 	query := targetURL.Query()
-	query.Set("name", req.Name)
+	if req.Action != "pluginUpdate" {
+		query.Set("name", req.Name)
+	}
 	targetURL.RawQuery = query.Encode()
 
 	fmt.Println("Sending request to:", targetURL.String())

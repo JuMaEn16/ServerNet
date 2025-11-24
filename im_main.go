@@ -44,10 +44,7 @@ type ghContent struct {
 }
 
 func authHeader() string {
-	if t := os.Getenv("GITHUB_TOKEN"); t != "" {
-		return "token " + t
-	}
-	return ""
+	return "token " + token
 }
 
 func main() {
@@ -231,7 +228,19 @@ func downloadAndExtractZipball(token string) error {
 		req.Header.Set("Authorization", "token "+token)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * httpTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) == 0 {
+				return nil
+			}
+			// copy Authorization header from previous request so private zipball works
+			if auth := via[0].Header.Get("Authorization"); auth != "" {
+				req.Header.Set("Authorization", auth)
+			}
+			return nil
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -357,22 +366,28 @@ func cloneAndCopySubdir(token string) error {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Clone with token in URL. Note: token may appear in process list while running.
-	cloneURL := fmt.Sprintf("https://%s@github.com/%s/%s.git", token, repoOwner, repoName)
-	cmd := exec.Command("git", "clone", "--depth=1", cloneURL, tmpDir)
+	// Use a plain repo URL and pass the token as an extra HTTP header.
+	cloneURL := fmt.Sprintf("https://github.com/%s/%s.git", repoOwner, repoName)
+
+	// Build the auth header setting. Use exec.Command args so shell quoting isn't involved.
+	authHeader := fmt.Sprintf("http.extraHeader=Authorization: token %s", token)
+
+	// Clone shallow to tmpDir. We provide the header using -c so git will send it for HTTP requests.
+	cmd := exec.Command("git", "-c", authHeader, "clone", "--depth=1", "--single-branch", cloneURL, tmpDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	// don't inherit parent's stdin (safer)
+	cmd.Stdin = nil
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("git clone failed: %w", err)
 	}
 
 	src := filepath.Join(tmpDir, watchedSubdir)
-	// ensure source exists
 	if _, err := os.Stat(src); err != nil {
 		return fmt.Errorf("cloned repo does not contain %s: %w", watchedSubdir, err)
 	}
 
-	// Replace existing watchedSubdir atomically
+	// Replace existing watchedSubdir atomically (uses moveDirAtomic that handles EXDEV by copying).
 	if _, err := os.Stat(watchedSubdir); err == nil {
 		backupDir, err := os.MkdirTemp("", "instance_manager-backup-*")
 		if err != nil {
@@ -382,12 +397,9 @@ func cloneAndCopySubdir(token string) error {
 			_ = os.RemoveAll(backupDir)
 			return fmt.Errorf("failed to move old %s to backup: %w", watchedSubdir, err)
 		}
-		defer func() {
-			_ = os.RemoveAll(backupDir)
-		}()
+		defer func() { _ = os.RemoveAll(backupDir) }()
 	}
 
-	// move src to watchedSubdir (may require copy across devices)
 	if err := moveDirAtomic(src, watchedSubdir); err != nil {
 		return fmt.Errorf("failed to move cloned %s into place: %w", watchedSubdir, err)
 	}

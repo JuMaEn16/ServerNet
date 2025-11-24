@@ -50,7 +50,7 @@ func main() {
 
 	localVersion, _ := readLocalVersion()
 
-	remoteVersion, err := fetchRemoteVersionContent(versionFileName)
+	remoteVersion, err := fetchRemoteVersionContent("server_main/" + versionFileName)
 	if err != nil {
 		if errors.Is(err, ErrRemoteVersionNotFound) {
 			log.Println("Remote version file not found. Downloading newest instance_manager and creating local version file.")

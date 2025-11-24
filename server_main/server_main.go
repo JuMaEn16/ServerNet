@@ -17,22 +17,22 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 const (
-	repoOwner       = "JuMaEn16"
-	repoName        = "ServerNet"
-	watchedSubdir   = "server_main/server_manager"
-	versionFileName = ".current_version"
-	httpTimeout     = 60 * time.Second
-	token           = ""
+	repoOwner = "JuMaEn16"
+	repoName  = "ServerNet"
+	// path inside the repo / zip to the subtree we care about:
+	watchedSubdir = "server_main/server_manager"
+	// local directory name to place the subtree into:
+	watchedSubdirLocal = "server_manager"
+	versionFileName    = ".current_version"
+	httpTimeout        = 60 * time.Second
 )
 
 var (
 	ErrRemoteVersionNotFound = errors.New("remote version file not found")
-	ErrZipballNotFound       = errors.New("zipball not found (404) — repo may be private or token missing")
+	ErrZipballNotFound       = errors.New("zipball not found (404) — repo may be private or removed")
 )
 
 type ghContent struct {
@@ -45,22 +45,8 @@ type ghContent struct {
 	Sha      string `json:"sha"`
 }
 
-func authHeader() string {
-	return "token " + token
-}
-
 func main() {
 	log.SetFlags(0)
-
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		log.Fatal("GITHUB_TOKEN not found in environment")
-	}
 
 	localVersion, _ := readLocalVersion()
 
@@ -137,9 +123,7 @@ func fetchRemoteVersionContent(path string) (string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", repoOwner, repoName, path)
 	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
 	req.Header.Set("Accept", "application/vnd.github+json")
-	if h := authHeader(); h != "" {
-		req.Header.Set("Authorization", h)
-	}
+	// repo is public now — no Authorization header
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -179,9 +163,6 @@ func fetchLatestCommitSHA() (string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits?per_page=1", repoOwner, repoName)
 	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
 	req.Header.Set("Accept", "application/vnd.github+json")
-	if h := authHeader(); h != "" {
-		req.Header.Set("Authorization", h)
-	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -209,47 +190,38 @@ func fetchLatestCommitSHA() (string, error) {
 }
 
 func updateInstanceManager() error {
-	// Try zipball download first (authenticated if token present)
-	err := downloadAndExtractZipball(token)
+	// Try zipball download first
+	err := downloadAndExtractZipball()
 	if err == nil {
 		return nil
 	}
 
-	// If zipball not found and no token was set, show clear instructions
-	if errors.Is(err, ErrZipballNotFound) && token == "" {
-		return fmt.Errorf("%w\n\nTo access private repositories you must provide a GitHub Personal Access Token (PAT).\nCreate a token with 'repo' scope and set the environment variable before running:\n\n  export GITHUB_TOKEN=\"ghp_...\"\n  go run updater.go\n\nSee https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token for details", ErrZipballNotFound)
+	// If zipball not found, instruct user and attempt git-clone fallback.
+	if errors.Is(err, ErrZipballNotFound) {
+		return fmt.Errorf("%w\n\nThe repository zipball was not found. Ensure the repository %s/%s exists and is public", ErrZipballNotFound, repoOwner, repoName)
 	}
 
-	// If we have a token but zip extraction still failed due to some other error, attempt a git-clone fallback (if a token exists in GIT_TOKEN or GITHUB_TOKEN).
-
-	log.Println("Zipball download failed, attempting git clone fallback (using token from GIT_TOKEN or GITHUB_TOKEN)...")
-	if err := cloneAndCopySubdir(token); err != nil {
+	// Otherwise try git-clone fallback
+	log.Println("Zipball download failed, attempting git clone fallback...")
+	if err := cloneAndCopySubdir(); err != nil {
 		return fmt.Errorf("git clone fallback failed: %w (original zipball error: %v)", err, err)
 	}
 	return nil
 }
 
-func downloadAndExtractZipball(token string) error {
+func downloadAndExtractZipball() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*httpTimeout)
 	defer cancel()
 
 	zipURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/zipball", repoOwner, repoName)
 	req, _ := http.NewRequestWithContext(ctx, "GET", zipURL, nil)
 	req.Header.Set("Accept", "application/vnd.github+json")
-	if token != "" {
-		req.Header.Set("Authorization", "token "+token)
-	}
+	// public repo => no Authorization header
 
 	client := &http.Client{
 		Timeout: 10 * httpTimeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) == 0 {
-				return nil
-			}
-			// copy Authorization header from previous request so private zipball works
-			if auth := via[0].Header.Get("Authorization"); auth != "" {
-				req.Header.Set("Authorization", auth)
-			}
+			// no special header copying required for public repos
 			return nil
 		},
 	}
@@ -310,7 +282,8 @@ func downloadAndExtractZipball(token string) error {
 			continue
 		}
 		rel := strings.TrimPrefix(rest, watchedSubdir+"/")
-		destPath := filepath.Join(tempDir, watchedSubdir, rel)
+		// place into watchedSubdirLocal inside our temp extraction dir
+		destPath := filepath.Join(tempDir, watchedSubdirLocal, rel)
 
 		if f.FileInfo().IsDir() {
 			if err := os.MkdirAll(destPath, 0755); err != nil {
@@ -342,53 +315,46 @@ func downloadAndExtractZipball(token string) error {
 	}
 
 	if !extractedAny {
-		return errors.New("didn't find " + watchedSubdir + " in repository archive")
+		return fmt.Errorf("didn't find %s in repository archive", watchedSubdir)
 	}
 
-	// Replace local watchedSubdir atomically: remove old and move new into place
-	// Use moveDirAtomic to handle cross-device filesystems.
-	if _, err := os.Stat(watchedSubdir); err == nil {
+	// Replace local watchedSubdirLocal atomically: remove old and move new into place
+	if _, err := os.Stat(watchedSubdirLocal); err == nil {
 		backupDir, err := os.MkdirTemp("", "instance_manager-backup-*")
 		if err != nil {
 			return err
 		}
-		if err := moveDirAtomic(watchedSubdir, filepath.Join(backupDir, watchedSubdir)); err != nil {
+		if err := moveDirAtomic(watchedSubdirLocal, filepath.Join(backupDir, watchedSubdirLocal)); err != nil {
 			_ = os.RemoveAll(backupDir)
-			return fmt.Errorf("failed to move old %s to backup: %w", watchedSubdir, err)
+			return fmt.Errorf("failed to move old %s to backup: %w", watchedSubdirLocal, err)
 		}
-		// if moving succeeded, we will later remove backupDir after new moved into place
 		defer func() {
 			_ = os.RemoveAll(backupDir)
 		}()
 	}
 
-	newPath := filepath.Join(tempDir, watchedSubdir)
-	if err := moveDirAtomic(newPath, watchedSubdir); err != nil {
-		return fmt.Errorf("failed to move new %s into place: %w", watchedSubdir, err)
+	newPath := filepath.Join(tempDir, watchedSubdirLocal)
+	if err := moveDirAtomic(newPath, watchedSubdirLocal); err != nil {
+		return fmt.Errorf("failed to move new %s into place: %w", watchedSubdirLocal, err)
 	}
 
-	log.Println("Successfully updated", watchedSubdir, "via zipball")
+	log.Println("Successfully updated", watchedSubdirLocal, "via zipball")
 	return nil
 }
 
-func cloneAndCopySubdir(token string) error {
+func cloneAndCopySubdir() error {
 	tmpDir, err := os.MkdirTemp("", "repo-clone-*")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Use a plain repo URL and pass the token as an extra HTTP header.
 	cloneURL := fmt.Sprintf("https://github.com/%s/%s.git", repoOwner, repoName)
 
-	// Build the auth header setting. Use exec.Command args so shell quoting isn't involved.
-	authHeader := fmt.Sprintf("http.extraHeader=Authorization: token %s", token)
-
-	// Clone shallow to tmpDir. We provide the header using -c so git will send it for HTTP requests.
-	cmd := exec.Command("git", "-c", authHeader, "clone", "--depth=1", "--single-branch", cloneURL, tmpDir)
+	// Clone shallow to tmpDir.
+	cmd := exec.Command("git", "clone", "--depth=1", "--single-branch", cloneURL, tmpDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	// don't inherit parent's stdin (safer)
 	cmd.Stdin = nil
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("git clone failed: %w", err)
@@ -399,24 +365,24 @@ func cloneAndCopySubdir(token string) error {
 		return fmt.Errorf("cloned repo does not contain %s: %w", watchedSubdir, err)
 	}
 
-	// Replace existing watchedSubdir atomically (uses moveDirAtomic that handles EXDEV by copying).
-	if _, err := os.Stat(watchedSubdir); err == nil {
+	// Replace existing watchedSubdirLocal atomically
+	if _, err := os.Stat(watchedSubdirLocal); err == nil {
 		backupDir, err := os.MkdirTemp("", "instance_manager-backup-*")
 		if err != nil {
 			return err
 		}
-		if err := moveDirAtomic(watchedSubdir, filepath.Join(backupDir, watchedSubdir)); err != nil {
+		if err := moveDirAtomic(watchedSubdirLocal, filepath.Join(backupDir, watchedSubdirLocal)); err != nil {
 			_ = os.RemoveAll(backupDir)
-			return fmt.Errorf("failed to move old %s to backup: %w", watchedSubdir, err)
+			return fmt.Errorf("failed to move old %s to backup: %w", watchedSubdirLocal, err)
 		}
 		defer func() { _ = os.RemoveAll(backupDir) }()
 	}
 
-	if err := moveDirAtomic(src, watchedSubdir); err != nil {
-		return fmt.Errorf("failed to move cloned %s into place: %w", watchedSubdir, err)
+	if err := moveDirAtomic(src, watchedSubdirLocal); err != nil {
+		return fmt.Errorf("failed to move cloned %s into place: %w", watchedSubdirLocal, err)
 	}
 
-	log.Println("Successfully updated", watchedSubdir, "via git clone fallback")
+	log.Println("Successfully updated", watchedSubdirLocal, "via git clone fallback")
 	return nil
 }
 
@@ -509,18 +475,18 @@ func copyDir(src, dest string) error {
 }
 
 func runInstanceManager() error {
-	if _, err := os.Stat(watchedSubdir); err != nil {
-		return fmt.Errorf("%s does not exist: %w", watchedSubdir, err)
+	if _, err := os.Stat(watchedSubdirLocal); err != nil {
+		return fmt.Errorf("%s does not exist: %w", watchedSubdirLocal, err)
 	}
 
 	cmd := exec.Command("go", "run", ".")
-	cmd.Dir = watchedSubdir
+	cmd.Dir = watchedSubdirLocal
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Env = os.Environ()
 
-	log.Printf("Running `go run .` in ./%s ...\n", watchedSubdir)
+	log.Printf("Running `go run .` in ./%s ...\n", watchedSubdirLocal)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("go run failed: %w", err)
 	}

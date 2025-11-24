@@ -994,10 +994,32 @@ func InstanceActionHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func runCommandWait(dir string, name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run() // waits until the command finishes
+}
+
 func main() {
 	loadConfig()
 
-	runCommand("./website", "npm", "run", "dev")
+	go func() {
+		// Step 1: npm install (blocking inside goroutine)
+		if err := runCommandWait("./website", "npm", "install"); err != nil {
+			log.Printf("npm install failed: %v", err)
+			return
+		}
+
+		// Step 2: npm run dev (also blocking inside goroutine)
+		// This process usually does not exit until you stop the program.
+		if err := runCommandWait("./website", "npm", "run", "dev"); err != nil {
+			log.Printf("npm run dev failed: %v", err)
+			return
+		}
+	}()
+
 	runCommand("./proxy", "java", "-jar", "velocity.jar")
 
 	go func() {

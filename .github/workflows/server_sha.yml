@@ -1,0 +1,41 @@
+name: Update Server Version
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server_main/**'            # Trigger only if server_main changes
+      - '!server_main/.current_version' # Ignore changes to the version file itself
+
+permissions:
+  contents: write
+
+jobs:
+  update-server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Update Server Version File
+        run: |
+          NEW_SHA=${{ github.sha }}
+          echo "Updating Server version to: $NEW_SHA"
+          
+          # Ensure dir exists and write file
+          mkdir -p server_main
+          echo "$NEW_SHA" > server_main/.current_version
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [[ -n $(git status -s) ]]; then
+            git add server_main/.current_version
+            git commit -m "chore(server): update version to ${{ github.sha }} [skip ci]"
+            git push
+          else
+            echo "No changes to commit."
+          fi

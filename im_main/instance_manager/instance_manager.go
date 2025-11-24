@@ -1278,6 +1278,147 @@ func restartWorldHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("World '%s' restarted on port %d", name, port)))
 }
 
+func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
+	const (
+		owner  = "JuMaEn16"
+		repo   = "ServerNet"
+		branch = "main"
+		subdir = "im_main/instance_manager/plugins"
+		dest   = "plugins"
+	)
+
+	fail := func(msg string, err error) {
+		http.Error(w, msg+": "+err.Error(), http.StatusInternalServerError)
+	}
+
+	// 1) Remove existing plugins dir
+	if err := os.RemoveAll(dest); err != nil {
+		fail("remove plugins directory failed", err)
+		return
+	}
+
+	// 2) Download repository zip
+	zipURL := fmt.Sprintf(
+		"https://github.com/%s/%s/archive/refs/heads/%s.zip",
+		owner, repo, branch,
+	)
+
+	req, err := http.NewRequest(http.MethodGet, zipURL, nil)
+	if err != nil {
+		fail("creating request failed", err)
+		return
+	}
+
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fail("downloading zip failed", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		http.Error(w, "GitHub download failed: "+string(bodyBytes), resp.StatusCode)
+		return
+	}
+
+	tmpFile, err := os.CreateTemp("", "repo-*.zip")
+	if err != nil {
+		fail("creating temp file failed", err)
+		return
+	}
+	tmpPath := tmpFile.Name()
+	defer func() {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+	}()
+
+	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
+		fail("writing temp zip failed", err)
+		return
+	}
+	tmpFile.Close()
+
+	// 3) Extract only plugins subdirectory
+	zr, err := zip.OpenReader(tmpPath)
+	if err != nil {
+		fail("opening zip failed", err)
+		return
+	}
+	defer zr.Close()
+
+	topPrefix := ""
+	if len(zr.File) > 0 {
+		if parts := strings.SplitN(zr.File[0].Name, "/", 2); len(parts) > 0 {
+			topPrefix = parts[0] + "/"
+		}
+	}
+
+	extractedAny := false
+
+	for _, f := range zr.File {
+		rel := strings.TrimPrefix(f.Name, topPrefix)
+
+		if rel == subdir || strings.HasPrefix(rel, subdir+"/") {
+			extractedAny = true
+
+			relInside := strings.TrimPrefix(rel, subdir)
+			relInside = strings.TrimPrefix(relInside, "/")
+			outPath := filepath.Join(dest, relInside)
+
+			if f.FileInfo().IsDir() {
+				if err := os.MkdirAll(outPath, f.Mode()); err != nil {
+					fail("mkdir failed", err)
+					return
+				}
+				continue
+			}
+
+			rc, err := f.Open()
+			if err != nil {
+				fail("reading zipped file failed", err)
+				return
+			}
+
+			if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+				rc.Close()
+				fail("making parent dirs failed", err)
+				return
+			}
+
+			outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, f.Mode())
+			if err != nil {
+				rc.Close()
+				fail("writing extracted file failed", err)
+				return
+			}
+
+			if _, err := io.Copy(outFile, rc); err != nil {
+				rc.Close()
+				outFile.Close()
+				fail("copying file failed", err)
+				return
+			}
+
+			rc.Close()
+			outFile.Close()
+		}
+	}
+
+	if !extractedAny {
+		http.Error(w, "subdirectory not found in repo: "+subdir, 500)
+		return
+	}
+
+	// success
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Plugins refreshed successfully"))
+}
+
 func main() {
 
 	err := godotenv.Load("../.env")
@@ -1295,6 +1436,7 @@ func main() {
 	http.HandleFunc("/stop-server", stopServerHandler)
 	http.HandleFunc("/save-instance", saveWorldHandler)
 	http.HandleFunc("/restart-instance", restartWorldHandler)
+	http.HandleFunc("/update-plugins", RefreshPluginsHandler)
 
 	port := 8000
 	log.Printf("Server running on :3 http://localhost:%d\n", port)

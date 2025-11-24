@@ -1,0 +1,7 @@
+Proxy on lunexia.de:25565
+Proxy API on Port 8001
+
+Backend Servers on: s1.lunexia.de, s2.lunexia.de ... Ports range from 3000 to 3999
+
+
+	token           = "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"

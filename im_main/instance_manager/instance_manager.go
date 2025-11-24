@@ -346,9 +346,6 @@ func downloadWithProgress(url, dest, token string) error {
 	client := &http.Client{}
 
 	req, _ := http.NewRequest("GET", url, nil)
-	if token != "" {
-		req.Header.Set("Authorization", "token "+token)
-	}
 
 	resp, err := client.Do(req)
 	if err != nil {

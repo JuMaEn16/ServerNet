@@ -1297,17 +1297,15 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2) Download repository zip
-	zipURL := fmt.Sprintf(
-	    "https://github.com/%s/%s/zipball",
-	    owner, repo,
-	)
+	// 2) Download repository zip (explicit branch) with User-Agent
+	zipURL := fmt.Sprintf("https://github.com/%s/%s/zipball/%s", owner, repo, branch)
 
 	req, err := http.NewRequest(http.MethodGet, zipURL, nil)
 	if err != nil {
 		fail("creating request failed", err)
 		return
 	}
+	req.Header.Set("User-Agent", "ServerNet-Plugin-Refresher/1.0")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -1317,8 +1315,9 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		// read small part of body for better error message
 		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		http.Error(w, "GitHub download failed: "+string(bodyBytes), resp.StatusCode)
+		http.Error(w, fmt.Sprintf("GitHub download failed: status=%d body=%s", resp.StatusCode, string(bodyBytes)), resp.StatusCode)
 		return
 	}
 
@@ -1328,6 +1327,7 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tmpPath := tmpFile.Name()
+	// ensure file closed and removed
 	defer func() {
 		tmpFile.Close()
 		os.Remove(tmpPath)
@@ -1337,7 +1337,30 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 		fail("writing temp zip failed", err)
 		return
 	}
-	tmpFile.Close()
+
+	// make sure it's written to disk
+	if err := tmpFile.Close(); err != nil {
+		fail("closing temp zip failed", err)
+		return
+	}
+
+	// Quick sanity: check ZIP signature (PK\003\004)
+	fcheck, err := os.Open(tmpPath)
+	if err != nil {
+		fail("opening temp zip for check failed", err)
+		return
+	}
+	sig := make([]byte, 4)
+	if _, err := io.ReadFull(fcheck, sig); err != nil {
+		fcheck.Close()
+		fail("reading temp zip signature failed", err)
+		return
+	}
+	fcheck.Close()
+	if string(sig) != "PK\x03\x04" {
+		http.Error(w, "downloaded file is not a zip (invalid signature)", http.StatusInternalServerError)
+		return
+	}
 
 	// 3) Extract only plugins subdirectory
 	zr, err := zip.OpenReader(tmpPath)
@@ -1347,18 +1370,22 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer zr.Close()
 
+	// Determine top-level prefix robustly (e.g. "owner-repo-<sha>/")
 	topPrefix := ""
-	if len(zr.File) > 0 {
-		if parts := strings.SplitN(zr.File[0].Name, "/", 2); len(parts) > 0 {
-			topPrefix = parts[0] + "/"
+	for _, f := range zr.File {
+		if idx := strings.Index(f.Name, "/"); idx > 0 {
+			topPrefix = f.Name[:idx+1] // include trailing '/'
+			break
 		}
 	}
+	// if topPrefix remains "", there is no top-level dir and names are root relative
 
 	extractedAny := false
 
 	for _, f := range zr.File {
 		rel := strings.TrimPrefix(f.Name, topPrefix)
 
+		// match the requested subdir exactly or any path inside it
 		if rel == subdir || strings.HasPrefix(rel, subdir+"/") {
 			extractedAny = true
 
@@ -1367,7 +1394,8 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 			outPath := filepath.Join(dest, relInside)
 
 			if f.FileInfo().IsDir() {
-				if err := os.MkdirAll(outPath, f.Mode()); err != nil {
+				// create directory (use 0755 so we don't accidentally set weird modes)
+				if err := os.MkdirAll(outPath, 0755); err != nil {
 					fail("mkdir failed", err)
 					return
 				}
@@ -1386,7 +1414,14 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, f.Mode())
+			// use sensible file perms, but preserve execute bit if present
+			mode := f.Mode()
+			if mode&0100 == 0 {
+				// ensure writable bits for owner if not executable
+				mode = (mode & os.FileMode(0777)) | 0644
+			}
+
+			outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 			if err != nil {
 				rc.Close()
 				fail("writing extracted file failed", err)
@@ -1406,13 +1441,13 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !extractedAny {
-		http.Error(w, "subdirectory not found in repo: "+subdir, 500)
+		http.Error(w, "subdirectory not found in repo: "+subdir, http.StatusInternalServerError)
 		return
 	}
 
 	// success
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Plugins refreshed successfully"))
+	_, _ = w.Write([]byte("Plugins refreshed successfully"))
 }
 
 func main() {

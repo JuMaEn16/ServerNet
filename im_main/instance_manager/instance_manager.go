@@ -1439,7 +1439,7 @@ func main() {
 	http.HandleFunc("/update-plugins", RefreshPluginsHandler)
 
 	port := 8000
-	log.Printf("Server running on :3 http://localhost:%d\n", port)
+	log.Printf("Server running on http://localhost:%d\n", port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

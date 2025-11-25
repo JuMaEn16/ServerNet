@@ -1299,18 +1299,14 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 2) Download repository zip
 	zipURL := fmt.Sprintf(
-	    "https://github.com/%s/%s/zipball/%s",
-	    owner, repo, branch,
+	    "https://github.com/%s/%s/zipball",
+	    owner, repo,
 	)
 
 	req, err := http.NewRequest(http.MethodGet, zipURL, nil)
 	if err != nil {
 		fail("creating request failed", err)
 		return
-	}
-
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		req.Header.Set("Authorization", "token "+token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

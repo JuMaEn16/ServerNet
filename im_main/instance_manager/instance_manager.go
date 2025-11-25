@@ -1299,8 +1299,8 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 2) Download repository zip
 	zipURL := fmt.Sprintf(
-		"https://github.com/%s/%s/archive/refs/heads/%s.zip",
-		owner, repo, branch,
+	    "https://github.com/%s/%s/zipball/%s",
+	    owner, repo, branch,
 	)
 
 	req, err := http.NewRequest(http.MethodGet, zipURL, nil)

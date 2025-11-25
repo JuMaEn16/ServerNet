@@ -19,6 +19,6 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, "")
       }
     },
-    allowedHosts: ['game.rythen.de'], // <-- add your hostname here
+    allowedHosts: ['game.rythen.de', 'dash.rythen.de'], // <-- add your hostname here
   },
 })

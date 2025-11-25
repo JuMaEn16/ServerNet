@@ -69,30 +69,6 @@ const NeonBackground: React.FC = () => (
   </>
 );
 
-const HeaderBar: React.FC = () => (
-  <header className="w-full fixed top-0 left-0 z-30 backdrop-blur-md bg-black/30 border-b border-white/6">
-    <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-10 rounded-lg bg-gradient-to-br from-purple-700 to-purple-500 flex items-center justify-center shadow-xl">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L3 7v6c0 5 3.58 9.74 9 11 5.42-1.26 9-6 9-11V7l-9-5z" />
-          </svg>
-        </div>
-        <div>
-          <div className="text-white font-semibold">Instance Manager</div>
-          <div className="text-xs text-purple-200/60">Manage your Minecraft instance managers</div>
-        </div>
-      </div>
-
-      <nav className="flex items-center gap-3">
-        <button className="px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/6 hover:bg-white/6">Overview</button>
-        <button className="px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/6 hover:bg-white/6">Logs</button>
-        <button className="px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/6 hover:bg-white/6">Settings</button>
-      </nav>
-    </div>
-  </header>
-);
-
 /* ---------------------- NEW: Local System Stats ---------------------- */
 const LocalSystemStats: React.FC<{
   systemInfo: LocalSystemInfo | null;
@@ -303,15 +279,21 @@ export default function InstancesPage(): JSX.Element {
   return (
     <div className="min-h-screen text-white">
       <NeonBackground />
-      <HeaderBar />
-      <main className="pt-24 px-6 pb-16 max-w-6xl mx-auto">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-bold text-white">Instance Managers</h2>
-            <p className="text-sm text-purple-200/70">Overview · Manage, start & monitor your IMs</p>
+      <header className="w-full fixed top-0 left-0 z-30 backdrop-blur-md bg-black/30 border-b border-white/6">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-18 h-14 rounded-lg bg-gradient-to-br from-purple-700 to-purple-500 flex items-center justify-center shadow-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L3 7v6c0 5 3.58 9.74 9 11 5.42-1.26 9-6 9-11V7l-9-5z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-white">Instance Managers</h2>
+              <p className="text-sm text-purple-200/70">Overview · Manage, start & monitor your IMs</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <nav className="flex items-center gap-3">
             <button
               onClick={() => {
                 setFormError(null);
@@ -319,7 +301,7 @@ export default function InstancesPage(): JSX.Element {
                 setNewName("");
                 setShowModal(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-green-600 to-green-500 cursor-pointer text-white shadow-lg hover:scale-99 active:scale-95 transition"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-br from-green-600 to-green-500 cursor-pointer text-white shadow-lg hover:scale-99 active:scale-95 transition"
             >
               <Play size={16} /> Add IM
             </button>
@@ -330,6 +312,12 @@ export default function InstancesPage(): JSX.Element {
             >
               Refresh
             </button>
+          </nav>
+        </div>
+      </header>
+      <main className="pt-24 px-6 pb-16 max-w-6xl mx-auto">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
           </div>
         </div>
 

@@ -313,9 +313,9 @@ export default function MinecraftProxyDashboard() {
               <div className="p-4 rounded-2xl bg-black/40 border border-purple-800/30 shadow-lg">
                 <h4 className="text-sm text-purple-200/80 mb-3">Quick actions</h4>
                 <div className="flex flex-col gap-3">
-                  <motion.button whileTap={{ scale: 0.97 }} className="px-4 py-2 rounded-lg bg-gradient-to-br from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-medium shadow">Restart proxy</motion.button>
-                  <motion.button whileHover={{ scale: 1.02 }} className="px-4 py-2 rounded-lg bg-black/60 border border-purple-700/40 text-purple-200 hover:text-white">Refresh</motion.button>
-                  <motion.button whileHover={{ scale: 1.02 }} className="px-4 py-2 rounded-lg bg-gradient-to-br from-red-600 to-red-500 text-white font-medium shadow">Kick all guests</motion.button>
+                  <motion.button whileTap={{ scale: 0.97 }} className="px-4 py-2 rounded-lg bg-gradient-to-br from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-medium shadow cursor-pointer">Restart proxy</motion.button>
+                  <motion.button whileHover={{ scale: 1.02 }} className="px-4 py-2 rounded-lg bg-black/60 border border-purple-700/40 text-purple-200 hover:text-white cursor-pointer">Refresh</motion.button>
+                  <motion.button whileHover={{ scale: 1.02 }} className="px-4 py-2 rounded-lg bg-gradient-to-br from-red-600 to-red-500 text-white font-medium shadow cursor-pointer">Kick all guests</motion.button>
                 </div>
               </div>
             </div>

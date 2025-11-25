@@ -1,0 +1,15 @@
+[13:52:28] [main/INFO] [com.velocitypowered.proxy.VelocityServer]: Booting up Velocity 3.4.0-SNAPSHOT (git-a046f700-b557)...
+[13:52:28] [main/INFO] [com.velocitypowered.proxy.VelocityServer]: Loading localizations...
+[13:52:28] [main/INFO] [com.velocitypowered.proxy.network.ConnectionManager]: Connections will use epoll channels, libdeflate (Linux x86_64) compression, OpenSSL 3.x.x (Linux x86_64) ciphers
+[13:52:28] [main/INFO] [com.velocitypowered.proxy.VelocityServer]: Loading plugins...
+[13:52:29] [main/INFO] [com.velocitypowered.proxy.plugin.VelocityPluginManager]: Loaded plugin lunexiaproxy 1.0.0 by 
+[13:52:29] [main/INFO] [com.velocitypowered.proxy.plugin.VelocityPluginManager]: Loaded plugin minimotd-velocity 2.2.1 by jmp
+[13:52:29] [main/INFO] [com.velocitypowered.proxy.plugin.VelocityPluginManager]: Loaded plugin velocity-scoreboard-api 1.1.5 by William278, NEZNAMY
+[13:52:29] [main/INFO] [com.velocitypowered.proxy.plugin.VelocityPluginManager]: Loaded plugin tab 5.3.2 by NEZNAMY
+[13:52:29] [main/INFO] [com.velocitypowered.proxy.VelocityServer]: Loaded 5 plugins
+[13:52:29] [LunexiaProxy - Task Executor #0/INFO] [de.jumaen.lunexiaProxy.LunexiaProxy]: LunexiaProxy HTTP API started on port 8081
+[13:52:29] [LunexiaProxy - Task Executor #0/INFO] [VelocityScoreboardAPI]: Successfully injected Scoreboard API.
+[13:52:29] [LunexiaProxy - Task Executor #0/INFO] [TAB]: Enabled in 141ms
+[13:52:29] [Netty epoll Boss #0/INFO] [com.velocitypowered.proxy.network.ConnectionManager]: Listening on /[0:0:0:0:0:0:0:0]:25565
+[13:52:29] [main/INFO] [com.velocitypowered.proxy.Velocity]: Done (1.03s)!
+[13:53:09] [pool-5-thread-4/INFO] [de.jumaen.lunexiaProxy.LunexiaProxy]: Registered server: lobby -> 192.168.23.192:3000

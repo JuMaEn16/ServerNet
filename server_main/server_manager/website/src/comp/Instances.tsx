@@ -319,14 +319,14 @@ export default function InstancesPage(): JSX.Element {
                 setNewName("");
                 setShowModal(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-green-600 to-green-500 text-white shadow-lg hover:scale-99 active:scale-95 transition"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-green-600 to-green-500 cursor-pointer text-white shadow-lg hover:scale-99 active:scale-95 transition"
             >
               <Play size={16} /> Add IM
             </button>
 
             <button
               onClick={() => fetchInstanceManagers()}
-              className="px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-sm hover:bg-white/6 transition"
+              className="px-3 py-2 rounded-lg bg-white/5 border border-white/6 text-sm hover:bg-white/6 transition cursor-pointer"
             >
               Refresh
             </button>
@@ -470,39 +470,6 @@ function ManagerCard({
       transition={{ duration: 0.35, delay: index * 0.06 }}
       className="relative p-8 bg-gradient-to-br from-black/50 to-purple-950/50 rounded-2xl shadow-xl border border-purple-950/40 flex flex-col md:flex-row gap-6"
     >
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
-        <button
-          onClick={() => {
-            setIsUpdating(true)
-            onInstanceAction(null, "pluginUpdate")}
-          }
-          aria-label={`Update plugins for ${im.name}`}
-          title={`Update plugins for ${im.name}`}
-          disabled={isUpdating}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-700/90 text-white text-xs hover:brightness-105 transition"
-        >
-          {isUpdating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Updating...</span>
-            </>
-          ) : (
-            <>
-              <CloudDownload size={14} />
-              <span>Update Plugins</span>
-            </>
-          )}
-        </button>
-
-        <button
-          onClick={onDelete}
-          aria-label={`Delete ${im.name}`}
-          title={`Delete ${im.name}`}
-          className="w-9 h-9 rounded-full bg-white/5 hover:bg-red-600 flex items-center justify-center transition"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
 
       <div className="md:w-64 flex-shrink-0 text-white">
         <div className="flex items-start justify-between gap-2">
@@ -553,6 +520,41 @@ function ManagerCard({
             />
           </div>
         </div>
+
+        <div className="pt-4.5 z-10 flex items-center gap-2">
+        <button
+          onClick={() => {
+            setIsUpdating(true)
+            onInstanceAction(null, "pluginUpdate")}
+          }
+          aria-label={`Update plugins for ${im.name}`}
+          title={`Update plugins for ${im.name}`}
+          disabled={isUpdating}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-700/90 text-white text-xs hover:brightness-105 transition cursor-pointer"
+        >
+          {isUpdating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Updating...</span>
+            </>
+          ) : (
+            <>
+              <CloudDownload size={14} />
+              <span>Update Plugins</span>
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={onDelete}
+          aria-label={`Delete ${im.name}`}
+          title={`Delete ${im.name}`}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-700/90 text-white text-xs hover:bg-red-600 cursor-pointer transition"
+        >
+          <Trash2 size={16} />
+          <span>Delete</span>
+        </button>
+      </div>
       </div>
 
       <div className="flex-1 space-y-3">
@@ -584,14 +586,14 @@ function ManagerCard({
             <div className="flex gap-2 mt-2 md:mt-0">
               <button
                 onClick={() => onInstanceAction(inst, "restart")}
-                className="px-3 py-1.5 rounded-md bg-blue-600/90 text-white text-xs flex items-center gap-2 hover:brightness-105 transition"
+                className="px-3 py-1.5 rounded-md bg-blue-600/90 text-white text-xs flex items-center gap-2 hover:brightness-105 transition cursor-pointer"
               >
                 <RefreshCw size={14} /> Restart
               </button>
 
               <button
                 onClick={() => onInstanceAction(inst, "save")}
-                className="px-3 py-1.5 rounded-md bg-purple-600/90 text-white text-xs flex items-center gap-2 hover:brightness-105 transition"
+                className="px-3 py-1.5 rounded-md bg-purple-600/90 text-white text-xs flex items-center gap-2 hover:brightness-105 transition cursor-pointer"
               >
                 <Save size={14} /> Save World
               </button>

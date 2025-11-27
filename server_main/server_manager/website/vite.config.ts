@@ -16,7 +16,9 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:8080",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, "")
+        rewrite: (path) => path.replace(/^\/api/, ""),
+        proxyTimeout: 60000,
+        timeout: 60000,
       }
     },
     allowedHosts: ['game.rythen.de', 'dash.rythen.de'], // <-- add your hostname here

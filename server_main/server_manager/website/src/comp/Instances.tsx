@@ -288,17 +288,25 @@ export default function InstancesPage(): JSX.Element {
         // optimistic UI could be added; here we call API and show toast
         console.log("Logging: " + JSON.stringify({ domain: im.domain, action }));
 
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000); // 30 sec timeout
+
         const res = await fetch("/api/action", {
           method: "POST",
-          headers: { "Content-Type": "application/json" }, // Corrected "jsoSn"
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ domain: im.domain, action, name: "none" }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeout);
         if (!res.ok) throw new Error(`Action failed ${res.status}`);
         setToast({ type: "ok", text: `${action} requested` });
-        // optional refresh
-        fetchInstanceManagers();
       } catch (err: any) {
-        setToast({ type: "error", text: `Action error: ${err.message || err}` });
+        if (err.name === "AbortError") {
+          setToast({ type: "error", text: "Request timed out (30s)" });
+        } else {
+          setToast({ type: "error", text: `Action error: ${err.message || err}` });
+        }
       }
     } else {
       if (instance != null) {

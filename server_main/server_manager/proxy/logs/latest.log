@@ -12,3 +12,8 @@
 [19:05:43] [LunexiaProxy - Task Executor #0/INFO] [TAB]: Enabled in 89ms
 [19:05:43] [Netty epoll Boss #0/INFO] [com.velocitypowered.proxy.network.ConnectionManager]: Listening on /[0:0:0:0:0:0:0:0]:25565
 [19:05:43] [main/INFO] [com.velocitypowered.proxy.Velocity]: Done (0.99s)!
+[19:22:39] [pool-5-thread-4/INFO] [de.jumaen.lunexiaProxy.LunexiaProxy]: Registered server: lobby -> 192.168.23.192:3000
+[22:14:15] [Shutdown thread/INFO] [com.velocitypowered.proxy.VelocityServer]: Shutting down the proxy...
+[22:14:15] [Shutdown thread/INFO] [com.velocitypowered.proxy.network.ConnectionManager]: Closing endpoint /0.0.0.0:25565
+[22:14:16] [LunexiaProxy - Task Executor #1/INFO] [de.jumaen.lunexiaProxy.LunexiaProxy]: LunexiaProxy HTTP API stopped.
+[22:14:16] [TAB Processing Thread/INFO] [TAB]: Disabled in 0ms

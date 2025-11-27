@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type JSX } from "react";
+import React, { useEffect, useRef, useState, type JSX } from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import { Play, RefreshCw, Trash2, Save, CloudDownload, Loader2 } from "lucide-react";
 
@@ -37,18 +37,64 @@ type GlobalSummary = {
   managers: InstanceManager[];
 };
 
+type UseAnimatedNumberOptions = {
+  fallback?: number;          // value to show when input is not finite (default 0)
+  animateFallback?: boolean;  // whether to animate to fallback or set immediately (default true)
+};
+
+
 /* ---------------------- small animated number hook ---------------------- */
-function useAnimatedNumber(value: number, precision = 0) {
-  const mv = useMotionValue(value);
+function useAnimatedNumber(
+  value: number,
+  precision = 0,
+  opts: UseAnimatedNumberOptions = {}
+) {
+  const { fallback = 0, animateFallback = true } = opts;
+
+  // initialize motion value with a finite number (value or fallback)
+  const initial = Number.isFinite(value) ? value : fallback;
+  const mv = useMotionValue<number>(initial);
   const spring = useSpring(mv, { stiffness: 140, damping: 20 });
-  const [display, setDisplay] = useState<number>(value);
 
-  useEffect(() => void mv.set(value), [value, mv]);
+  const [display, setDisplay] = useState<number>(initial);
+  const warnedRef = useRef(false);
 
+  // When `value` changes, decide what to do
   useEffect(() => {
-    const unsub = spring.on("change", (v) => setDisplay(Number(v.toFixed(precision))));
+    if (Number.isFinite(value)) {
+      // normal case: animate to the new finite value
+      mv.set(value);
+    } else {
+      // invalid input: optionally warn once and move to fallback
+      if (!warnedRef.current) {
+        console.warn("useAnimatedNumber: received non-finite value", value);
+        warnedRef.current = true;
+      }
+
+      if (animateFallback) {
+        // animate toward the fallback so UI shows smooth transition
+        mv.set(fallback);
+      } else {
+        // immediate fallback: set motion value and display immediately
+        mv.set(fallback);
+        setDisplay(fallback);
+      }
+    }
+    // we intentionally do not clear warnedRef; if you want repeated warnings remove the ref guard
+  }, [value, mv, fallback, animateFallback]);
+
+  // Subscribe to spring changes and update display with guards
+  useEffect(() => {
+    const unsub = spring.on("change", (v) => {
+      if (Number.isFinite(v)) {
+        setDisplay(Number(v.toFixed(precision)));
+      } else {
+        // if spring emits non-finite (rare), set the safe fallback so we don't "stick"
+        setDisplay(fallback);
+      }
+    });
     return () => unsub();
-  }, [spring, precision]);
+  }, [spring, precision, fallback]);
 
   return display;
 }

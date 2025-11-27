@@ -5,8 +5,9 @@ on:
     branches:
       - main
     paths:
-      - 'im_main/**'                # Trigger only if im_main changes
-      - '!im_main/.current_version'     # Ignore changes to the version file itself
+      - 'im_main/**'
+      - '!im_main/.current_version'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,27 +16,48 @@ jobs:
   update-im:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
+        with:
+          # fetch full history so rebase/pull works reliably
+          fetch-depth: 0
+          # keep credentials so git push can use them
+          persist-credentials: true
 
       - name: Update IM Version File
         run: |
           NEW_SHA=${{ github.sha }}
           echo "Updating IM version to: $NEW_SHA"
-
-          # Ensure dir exists and write file
           mkdir -p im_main
           echo "$NEW_SHA" > im_main/.current_version
 
-      - name: Commit and Push
+      - name: Commit and push (rebase then push, fallback to force-with-lease)
+        env:
+          # use the built-in token for auth
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if [[ -n $(git status -s) ]]; then
-            git add im_main/.current_version
-            git commit -m "chore(im): update version to ${{ github.sha }} [skip ci]"
-            git push
-          else
+          # stage and commit if changed
+          git add im_main/.current_version
+          if git diff --staged --quiet; then
             echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore(im): update version to ${{ github.sha }} [skip ci]"
+
+          # ensure remote URL uses the token (guarantees auth for push/pull)
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+
+          # fetch remote and rebase to avoid non-fast-forward errors
+          git fetch origin main
+          if git rebase origin/main; then
+            git push origin main
+          else
+            echo "Rebase failed — aborting rebase and trying push with force-with-lease"
+            git rebase --abort || true
+            # force-with-lease is safer than force: it fails if remote advanced unexpectedly
+            git push --force-with-lease origin main
           fi

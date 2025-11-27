@@ -83,6 +83,7 @@ func main() {
 	}
 
 	if strings.TrimSpace(localVersion) == strings.TrimSpace(remoteVersion) && localVersion != "" {
+		log.Printf("Local: %s Remote: %s", strings.TrimSpace(localVersion), strings.TrimSpace(remoteVersion))
 		log.Println("No update detected. Running local instance_manager...")
 		if err := runInstanceManager(); err != nil {
 			log.Fatalf("Failed to run local instance_manager: %v", err)

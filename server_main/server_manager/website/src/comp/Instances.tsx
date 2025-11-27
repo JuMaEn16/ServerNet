@@ -291,7 +291,7 @@ export default function InstancesPage(): JSX.Element {
         const res = await fetch("/api/action", {
           method: "POST",
           headers: { "Content-Type": "application/json" }, // Corrected "jsoSn"
-          body: JSON.stringify({ domain: im.domain, action }),
+          body: JSON.stringify({ domain: im.domain, action, name: "none" }),
         });
         if (!res.ok) throw new Error(`Action failed ${res.status}`);
         setToast({ type: "ok", text: `${action} requested` });

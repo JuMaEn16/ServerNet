@@ -51,7 +51,7 @@ func main() {
 	localVersion, _ := readLocalVersion()
 	println(localVersion)
 
-	remoteVersion, err := fetchRemoteVersionContent("im_main/" + versionFileName)
+	remoteVersion, err := fetchRemoteVersionContent("server_main/" + versionFileName)
 	if err != nil {
 		if errors.Is(err, ErrRemoteVersionNotFound) {
 			log.Println("Remote version file not found. Downloading newest instance_manager and creating local version file.")
@@ -83,6 +83,7 @@ func main() {
 	}
 
 	if strings.TrimSpace(localVersion) == strings.TrimSpace(remoteVersion) && localVersion != "" {
+		log.Printf("Local: %s Remote: %s", strings.TrimSpace(localVersion), strings.TrimSpace(remoteVersion))
 		log.Println("No update detected. Running local instance_manager...")
 		if err := runInstanceManager(); err != nil {
 			log.Fatalf("Failed to run local instance_manager: %v", err)

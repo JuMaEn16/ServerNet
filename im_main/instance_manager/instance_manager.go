@@ -679,11 +679,6 @@ func stopServerHold(name string, srv *Server) error {
 	delete(servers, srvID)
 	serversMux.Unlock()
 
-	mu.Lock()
-	serverMap[name] = nil // <-- STATUS UPDATE 2 (nil = "stopped" in systemHandler)
-	log.Printf("Server '%s' set to nil in serverMap (stopped).", name)
-	mu.Unlock()
-
 	return nil
 }
 
@@ -696,11 +691,12 @@ func startHeldServer(name string, port int, dir string) error {
 	log.Printf("Server '%s' status set to 'restarting'", name)
 	mu.Unlock()
 
-	pluginSrc := "LunexiaMain.jar"
-	pluginDst := filepath.Join(filepath.Join(dir, "plugins"), "LunexiaMain.jar")
+	localPluginsFolder := "plugins" // <-- local plugins folder you prepared
+	serverPluginsFolder := filepath.Join(dir, "plugins")
 
-	if err := copyFile(pluginSrc, pluginDst); err != nil {
-		return fmt.Errorf("failed copying LunexiaMain.jar: %w", err)
+	// Make sure destination plugins folder exists; copyDir will create it anyway.
+	if err := copyDir(localPluginsFolder, serverPluginsFolder); err != nil {
+		return fmt.Errorf("failed copying plugins folder: %w", err)
 	}
 
 	// 2. start server again (same port/dir/name)

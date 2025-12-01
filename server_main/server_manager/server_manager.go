@@ -649,7 +649,9 @@ func waitForInstance(name string) {
 }
 
 var PreferredIMs = map[string][]string{
-	"lobby": {"Ju Server"},
+	"lobby":            {"Ju Server"},
+	"lunaris_asteroid": {"Ju PC"},
+	"wheat":            {"Ju PC"},
 }
 
 func pickInstanceManagerForServer(serverType string, ims []InstanceManager) *InstanceManager {

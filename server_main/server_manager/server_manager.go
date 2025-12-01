@@ -736,6 +736,8 @@ func ensureInstance(name string) {
 		for _, inst := range im.Instances {
 			if inst.Name == name {
 				// --- THIS IS THE MODIFIED LOGIC ---
+				log.Printf("Found Instance")
+				log.Printf("Checking Status: %s", inst.Status)
 				switch inst.Status {
 				case "running":
 					log.Printf("Found existing 'running' instance '%s' on %s. Registering with proxy.", name, im.Domain)

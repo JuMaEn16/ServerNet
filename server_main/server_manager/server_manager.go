@@ -678,6 +678,7 @@ func pickInstanceManagerForServer(serverType string, ims []InstanceManager) *Ins
 		}
 
 		for _, im := range online {
+			log.Printf("Checking %s", im.Name)
 			if preferredSet[im.Name] {
 				filtered = append(filtered, im)
 			}

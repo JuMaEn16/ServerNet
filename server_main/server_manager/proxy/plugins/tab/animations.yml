@@ -1,101 +1,82 @@
-MyAnimation1:
-  change-interval: 100
+logo:
+  change-interval: 50
   texts:
-    - '&d-&3--------------'
-    - '&3-&d-&3-------------'
-    - '&3--&d-&3------------'
-    - '&3---&d-&3-----------'
-    - '&3----&d-&3----------'
-    - '&3-----&d-&3---------'
-    - '&3------&d-&3--------'
-    - '&3-------&d-&3-------'
-    - '&3--------&d-&3------'
-    - '&3---------&d-&3-----'
-    - '&3----------&d-&3----'
-    - '&3-----------&d-&3---'
-    - '&3------------&d-&3--'
-    - '&3-------------&d-&3-'
-    - '&3--------------&d-'
-    - '&3-------------&d-&3-'
-    - '&3------------&d-&3--'
-    - '&3-----------&d-&3---'
-    - '&3----------&d-&3----'
-    - '&3---------&d-&3-----'
-    - '&3--------&d-&3------'
-    - '&3-------&d-&3-------'
-    - '&3------&d-&3--------'
-    - '&3-----&d-&3---------'
-    - '&3----&d-&3----------'
-    - '&3---&d-&3-----------'
-    - '&3--&d-&3------------'
-    - '&3-&d-&3-------------'
-    - '&d-&3--------------'
-ServerName:
-  change-interval: 300
+  - "<gradient:#BB80EF:#7700DE:#E4CCF8>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#DDBFF7:#7700DE:#C999F2>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#FFFFFF:#9940E6:#AD66EB>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#E4CCF8:#BB80EF:#9233E5>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#C999F2:#DDBFF7:#9940E6>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#AD66EB:#FFFFFF:#7700DE>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#9233E5:#E4CCF8:#9940E6>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#7700DE:#C999F2:#BB80EF>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#7700DE:#AD66EB:#DDBFF7>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#9940E6:#9233E5:#FFFFFF>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#BB80EF:#7700DE:#E4CCF8>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#DDBFF7:#7700DE:#C999F2>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#FFFFFF:#9940E6:#AD66EB>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#E4CCF8:#BB80EF:#9233E5>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#C999F2:#DDBFF7:#9940E6>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#AD66EB:#FFFFFF:#7700DE>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#9233E5:#E4CCF8:#9940E6>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+  - "<gradient:#7700DE:#C999F2:#BB80EF>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
+domain:
+  change-interval: 50
   texts:
-  - '&c&lServerName'
-  - '&c&n&lServerName'
-  - '&b&lServerName'
-  - '&b&l&nServerName'
-  - '&e&lServerName'
-  - '&e&n&lServerName'
-web:
-  change-interval: 200
+  - "<gradient:#C088EF:#B06BEC:#7700DE>dc.lunexia.de</gradient>"
+  - "<gradient:#AE66EB:#BB80EF:#8215E1>dc.lunexia.de</gradient>"
+  - "<gradient:#9B44E7:#E4CCF8:#8E2BE4>dc.lunexia.de</gradient>"
+  - "<gradient:#8922E2:#D2AAF4:#9940E7>dc.lunexia.de</gradient>"
+  - "<gradient:#7700DE:#C088EF:#A455E9>dc.lunexia.de</gradient>"
+  - "<gradient:#8215E1:#AE66EB:#B06BEC>dc.lunexia.de</gradient>"
+  - "<gradient:#8E2BE4:#9B44E7:#D2AAF4>dc.lunexia.de</gradient>"
+  - "<gradient:#9940E7:#8922E2:#E4CCF8>dc.lunexia.de</gradient>"
+  - "<gradient:#A455E9:#7700DE:#D2AAF4>dc.lunexia.de</gradient>"
+  - "<gradient:#B06BEC:#8215E1:#C088EF>dc.lunexia.de</gradient>"
+  - "<gradient:#BB80EF:#8E2BE4:#AE66EB>dc.lunexia.de</gradient>"
+  - "<gradient:#E4CCF8:#9940E7:#9B44E7>dc.lunexia.de</gradient>"
+  - "<gradient:#D2AAF4:#A455E9:#8922E2>dc.lunexia.de</gradient>"
+  - "<gradient:#C088EF:#B06BEC:#7700DE>dc.lunexia.de</gradient>"
+  - "<gradient:#AE66EB:#BB80EF:#8215E1>dc.lunexia.de</gradient>"
+  - "<gradient:#9B44E7:#E4CCF8:#8E2BE4>dc.lunexia.de</gradient>"
+  - "<gradient:#8922E2:#D2AAF4:#9940E7>dc.lunexia.de</gradient>"
+  - "<gradient:#7700DE:#C088EF:#A455E9>dc.lunexia.de</gradient>"
+  - "<gradient:#8215E1:#AE66EB:#B06BEC>dc.lunexia.de</gradient>"
+  - "<gradient:#8E2BE4:#9B44E7:#D2AAF4>dc.lunexia.de</gradient>"
+  - "<gradient:#9940E7:#8922E2:#E4CCF8>dc.lunexia.de</gradient>"
+  - "<gradient:#A455E9:#7700DE:#D2AAF4>dc.lunexia.de</gradient>"
+  - "<gradient:#B06BEC:#8215E1:#C088EF>dc.lunexia.de</gradient>"
+  - "<gradient:#BB80EF:#8E2BE4:#AE66EB>dc.lunexia.de</gradient>"
+domain:
+  change-interval: 50
   texts:
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&6w&eww.domain.com'
-  - '&ew&6w&ew.domain.com'
-  - '&eww&6w&e.domain.com'
-  - '&ewww&6.&edomain.com'
-  - '&ewww.&6d&eomain.com'
-  - '&ewww.d&6o&emain.com'
-  - '&ewww.do&6m&eain.com'
-  - '&ewww.dom&6a&ein.com'
-  - '&ewww.doma&6i&en.com'
-  - '&ewww.domai&6n&e.com'
-  - '&ewww.domain&6.&ecom'
-  - '&ewww.domain.&6c&eom'
-  - '&ewww.domain.c&6o&em'
-  - '&ewww.domain.co&6m'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-  - '&ewww.domain.com'
-vote:
-  change-interval: 1000
-  texts:
-  - '&avote.domain.com'
-  - '&a&nvote.domain.com'
-  - '&5vote.domain.com'
-  - '&5&nvote.domain.com'
-Welcome:
-  change-interval: 400
-  texts:
-  - '&7&lW_'
-  - '&7&lW_'
-  - '&7&lWe_'
-  - '&7&lWel_'
-  - '&7&lWelc_'
-  - '&7&lWelco_'
-  - '&7&lWelcom_'
-  - '&7&lWelcome_'
-  - '&7&lWelcome_'
-  - '&7&lWelcome_'
-  - '&7&lWelcome_'
-  - '&7&lWelcom_'
-  - '&7&lWelco_'
-  - '&7&lWelc_'
-  - '&7&lWel_'
-  - '&7&lWe_'
-  - '&7&lW_'
-  - '&7&lW_'
+  - "<gradient:#C592F1:#A85BEA:#7700DE>vote.lunexia.de</gradient>"
+  - "<gradient:#B575ED:#B16EED:#8112E0>vote.lunexia.de</gradient>"
+  - "<gradient:#A657E9:#BB80EF:#8A25E3>vote.lunexia.de</gradient>"
+  - "<gradient:#963AE5:#E4CCF8:#9437E5>vote.lunexia.de</gradient>"
+  - "<gradient:#871DE2:#D4AFF4:#9E49E8>vote.lunexia.de</gradient>"
+  - "<gradient:#7700DE:#C592F1:#A85BEA>vote.lunexia.de</gradient>"
+  - "<gradient:#8112E0:#B575ED:#B16EED>vote.lunexia.de</gradient>"
+  - "<gradient:#8A25E3:#A657E9:#BB80EF>vote.lunexia.de</gradient>"
+  - "<gradient:#9437E5:#963AE5:#E4CCF8>vote.lunexia.de</gradient>"
+  - "<gradient:#9E49E8:#871DE2:#D4AFF4>vote.lunexia.de</gradient>"
+  - "<gradient:#A85BEA:#7700DE:#C592F1>vote.lunexia.de</gradient>"
+  - "<gradient:#B16EED:#8112E0:#B575ED>vote.lunexia.de</gradient>"
+  - "<gradient:#BB80EF:#8A25E3:#A657E9>vote.lunexia.de</gradient>"
+  - "<gradient:#E4CCF8:#9437E5:#963AE5>vote.lunexia.de</gradient>"
+  - "<gradient:#D4AFF4:#9E49E8:#871DE2>vote.lunexia.de</gradient>"
+  - "<gradient:#C592F1:#A85BEA:#7700DE>vote.lunexia.de</gradient>"
+  - "<gradient:#B575ED:#B16EED:#8112E0>vote.lunexia.de</gradient>"
+  - "<gradient:#A657E9:#BB80EF:#8A25E3>vote.lunexia.de</gradient>"
+  - "<gradient:#963AE5:#E4CCF8:#9437E5>vote.lunexia.de</gradient>"
+  - "<gradient:#871DE2:#D4AFF4:#9E49E8>vote.lunexia.de</gradient>"
+  - "<gradient:#7700DE:#C592F1:#A85BEA>vote.lunexia.de</gradient>"
+  - "<gradient:#8112E0:#B575ED:#B16EED>vote.lunexia.de</gradient>"
+  - "<gradient:#8A25E3:#A657E9:#BB80EF>vote.lunexia.de</gradient>"
+  - "<gradient:#9437E5:#963AE5:#E4CCF8>vote.lunexia.de</gradient>"
+  - "<gradient:#9E49E8:#871DE2:#D4AFF4>vote.lunexia.de</gradient>"
+  - "<gradient:#A85BEA:#7700DE:#C592F1>vote.lunexia.de</gradient>"
+  - "<gradient:#B16EED:#8112E0:#B575ED>vote.lunexia.de</gradient>"
+  - "<gradient:#BB80EF:#8A25E3:#A657E9>vote.lunexia.de</gradient>"
 time:
   change-interval: 3000
   texts:

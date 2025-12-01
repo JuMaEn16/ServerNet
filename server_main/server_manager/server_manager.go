@@ -716,9 +716,6 @@ func ensureInstance(name string) {
 		log.Printf("proxy check error: %v", err)
 		return
 	}
-	if found {
-		return
-	}
 
 	// 2) Fetch instance summary
 	ims, err := getInstanceSummary()
@@ -741,10 +738,16 @@ func ensureInstance(name string) {
 				switch inst.Status {
 				case "running":
 					log.Printf("Found existing 'running' instance '%s' on %s. Registering with proxy.", name, im.Domain)
+					if found {
+						return
+					}
 					registerInstanceToProxy(name, im.Domain, inst.Port)
 					return // Success
 				case "started":
 					log.Printf("Found existing 'running' instance '%s' on %s. Registering with proxy.", name, im.Domain)
+					if found {
+						return
+					}
 					registerInstanceToProxy(name, im.Domain, inst.Port)
 					return // Success
 				case "restarting":

@@ -21,6 +21,12 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
+type Player struct {
+	UUID string `json:"uuid"`
+	Name string `json:"name"`
+	Mode string `json:"mode"`
+}
+
 type Instance struct {
 	Name        string   `json:"name"`
 	Players     []string `json:"players"`
@@ -80,6 +86,7 @@ type GlobalSummary struct {
 }
 
 var (
+	players          []Player
 	instanceManagers []InstanceManager
 	configFile       = "ims_config.json"
 	mu               sync.Mutex
@@ -1006,6 +1013,43 @@ func runCommandWait(dir string, name string, args ...string) error {
 	return cmd.Run() // waits until the command finishes
 }
 
+///////////////////////
+// PLAYER MANAGEMENT //
+///////////////////////
+
+func addPlayer(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Read "?name=..." from URL
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		http.Error(w, "Missing 'name' parameter", http.StatusBadRequest)
+		return
+	}
+	uuid := r.URL.Query().Get("uuid")
+	if uuid == "" {
+		http.Error(w, "Missing 'uuid' parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Create the player
+	player := Player{
+		UUID: uuid,
+		Name: name,
+		Mode: "lobby",
+	}
+
+	// Store the player
+	players = append(players, player)
+
+	// Return as JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(player)
+}
+
 func main() {
 	loadConfig()
 
@@ -1047,6 +1091,7 @@ func main() {
 		}
 	}()
 
+	http.HandleFunc("/player-add", addPlayer)
 	http.HandleFunc("/status", statusHandler)
 	http.HandleFunc("/create_im", createIM)
 	http.HandleFunc("/delete_im", deleteIM)

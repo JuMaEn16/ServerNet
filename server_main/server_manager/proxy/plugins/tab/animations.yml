@@ -1,5 +1,5 @@
 logo:
-  change-interval: 50
+  change-interval: 100
   texts:
   - "<gradient:#BB80EF:#7700DE:#E4CCF8>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
   - "<gradient:#DDBFF7:#7700DE:#C999F2>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
@@ -20,7 +20,7 @@ logo:
   - "<gradient:#9233E5:#E4CCF8:#9940E6>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
   - "<gradient:#7700DE:#C999F2:#BB80EF>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
 domain:
-  change-interval: 50
+  change-interval: 100
   texts:
   - "<gradient:#C088EF:#B06BEC:#7700DE>dc.lunexia.de</gradient>"
   - "<gradient:#AE66EB:#BB80EF:#8215E1>dc.lunexia.de</gradient>"
@@ -46,8 +46,8 @@ domain:
   - "<gradient:#A455E9:#7700DE:#D2AAF4>dc.lunexia.de</gradient>"
   - "<gradient:#B06BEC:#8215E1:#C088EF>dc.lunexia.de</gradient>"
   - "<gradient:#BB80EF:#8E2BE4:#AE66EB>dc.lunexia.de</gradient>"
-domain:
-  change-interval: 50
+vote:
+  change-interval: 100
   texts:
   - "<gradient:#C592F1:#A85BEA:#7700DE>vote.lunexia.de</gradient>"
   - "<gradient:#B575ED:#B16EED:#8112E0>vote.lunexia.de</gradient>"

@@ -197,6 +197,12 @@ online-mode=false
         "name": "einMitsuki",
         "level": 4,
         "bypassesPlayerLimit": false
+	},
+	{
+		"uuid": "5bc2018e-5e89-45c8-98fe-1b9891361a8e",
+        "name": "ANico09",
+        "level": 4,
+        "bypassesPlayerLimit": false
 	}
 ]`
 	if err := os.WriteFile(filepath.Join(dir, "ops.json"), []byte(ops), 0644); err != nil {

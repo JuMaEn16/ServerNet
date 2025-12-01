@@ -648,6 +648,65 @@ func waitForInstance(name string) {
 	log.Printf("Timed out waiting for instance '%s' to restart.", name)
 }
 
+var PreferredIMs = map[string][]string{
+	"lobby": {"Ju Server"},
+}
+
+func pickInstanceManagerForServer(serverType string, ims []InstanceManager) *InstanceManager {
+	// 1) Filter out offline IMs (CPUPercent == 0)
+	online := make([]InstanceManager, 0, len(ims))
+	for _, im := range ims {
+		if im.CPUPercent != 0 {
+			online = append(online, im)
+		}
+	}
+
+	if len(online) == 0 {
+		log.Printf("No ONLINE instance managers available to start server.")
+		return nil
+	}
+
+	// 2) Check for preferred IM list
+	preferred, hasPreferred := PreferredIMs[serverType]
+	var filtered []InstanceManager
+
+	if hasPreferred {
+		// Filter online IMs to preferred list
+		preferredSet := make(map[string]bool)
+		for _, p := range preferred {
+			preferredSet[p] = true
+		}
+
+		for _, im := range online {
+			log.Printf("Checking %s", im.Name)
+			if preferredSet[im.Name] {
+				filtered = append(filtered, im)
+			}
+		}
+
+		// If no preferred IMs are online → fallback to ALL online
+		if len(filtered) == 0 {
+			log.Printf("No preferred IMs online for type '%s'. Falling back to all.", serverType)
+			filtered = online
+		}
+	} else {
+		filtered = online
+	}
+
+	// 3) Sort by CPU then free RAM
+	sort.Slice(filtered, func(i, j int) bool {
+		if filtered[i].CPUPercent == filtered[j].CPUPercent {
+			freeRAMi := filtered[i].RAMTotalMB - filtered[i].RAMUsedMB
+			freeRAMj := filtered[j].RAMTotalMB - filtered[j].RAMUsedMB
+			return freeRAMi > freeRAMj
+		}
+		return filtered[i].CPUPercent < filtered[j].CPUPercent
+	})
+
+	selected := filtered[0]
+	return &selected
+}
+
 func ensureInstance(name string) {
 	// 1) Check if instance is already registered in proxy
 	found, err := proxyHasInstance(name)
@@ -699,29 +758,11 @@ func ensureInstance(name string) {
 	}
 
 	// 4) No existing instance found: pick least-loaded IM
-	filtered := make([]InstanceManager, 0, len(ims))
-	for _, im := range ims {
-		if im.CPUPercent != 0 {
-			filtered = append(filtered, im)
-		}
-	}
-
-	if len(filtered) == 0 {
-		log.Printf("No ONLINE instance managers available to start server.")
+	selected := pickInstanceManagerForServer(name, ims)
+	if selected == nil {
 		return
 	}
 
-	// Sort by CPU (asc), then free RAM (desc)
-	sort.Slice(filtered, func(i, j int) bool {
-		if filtered[i].CPUPercent == filtered[j].CPUPercent {
-			freeRAMi := filtered[i].RAMTotalMB - filtered[i].RAMUsedMB
-			freeRAMj := filtered[j].RAMTotalMB - filtered[j].RAMUsedMB
-			return freeRAMi > freeRAMj
-		}
-		return filtered[i].CPUPercent < filtered[j].CPUPercent
-	})
-
-	selected := filtered[0]
 	log.Printf("Selected IM %s (%s) with CPU %.2f%% RAM used %dMB",
 		selected.Name, selected.Domain, selected.CPUPercent, selected.RAMUsedMB)
 
@@ -828,7 +869,9 @@ func moveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Ensure the destination instance exists (your function; assumed defined elsewhere).
+	log.Printf("Calling ensureInstance..")
 	ensureInstance(req.Server)
+	log.Printf("Ensure Instance done")
 
 	// Forward to local move_to endpoint.
 	endpoint := "http://localhost:8081/move_to"

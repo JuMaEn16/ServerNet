@@ -10,19 +10,16 @@ header-footer:
         - "Test footer in world 'test'"
     default:
       header:
-        - "<#FFFFFF>&m                                                </#FFFF00>"
-        - "<gradient:#7700DE:#ffffff:#7700DE>ʟᴜɴᴇхɪᴀ.ᴅᴇ</gradient>"
-        - "&r&7&l>> %animation:Welcome%&3 &l%player%&7&l! &7&l<<"
+        - "<dark_gray>&m                                                </dark_gray>"
+        - "%animation:logo%"
+        - ""
         - "&r&aOnline players: &f%online%"
         - "&6Online staff: &e%staffonline%"
         - ""
       footer:
-        - "%animation:time%"
-        - "&aPing: %ping%"
-        - "&7&l Used memory: %memory-used% MB / %memory-max% MB"
         - ""
         - "&r<#7289DA>Join our discord! %animation:web%"
-        - "<#FFFFFF>&m                                                </#FFFF00>"
+        - "<dark_gray>&m                                                </dark_gray>"
 
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Tablist-name-formatting
 tablist-name-formatting:
@@ -79,7 +76,7 @@ bossbar:
 
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Scoreboard
 scoreboard:
-  enabled: false
+  enabled: true
   toggle-command: /sb
   remember-toggle-choice: false
   hidden-by-default: false
@@ -88,7 +85,7 @@ scoreboard:
   delay-on-join-milliseconds: 0
   scoreboards:
     scoreboard-1.20.3+:
-      title: "<#E0B11E>MyServer</#FF0000>"
+      title: "%animation:logo%"
       display-condition: "%player-version-id%>=765;%bedrock%=false" # Only display it to players using 1.20.3+ AND NOT bedrock edition
       lines:
         - "&7%date%"
@@ -104,7 +101,7 @@ scoreboard:
         - "* &bWorld&7:||%world%"
         - "%animation:MyAnimation1%"
     scoreboard:
-      title: "<#E0B11E>MyServer</#FF0000>"
+      title: "%animation:logo%"
       lines:
         - "&7%date%"
         - "%animation:MyAnimation1%"

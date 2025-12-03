@@ -503,6 +503,35 @@ function ManagerCard({
   const animatedCPU = useAnimatedNumber(cpu);
   const animatedRAM = useAnimatedNumber(ram);
 
+  const pluginUpdater = async () => {
+    try {
+      // optimistic UI could be added; here we call API and show toast
+      setIsUpdating(true);
+      console.log("Plugin update for: " + JSON.stringify({ domain: im.domain }));
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000); // 30 sec timeout
+
+      const res = await fetch("/api/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: im.domain, action: "pluginUpdate", name: "none" }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`Action failed ${res.status}`);
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        console.log("Request timed out (30s)");
+      } else {
+        console.log(`Action error: ${err.message || err}`);
+      }
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
   const [isUpdating, setIsUpdating] = useState(false);
 
   return (
@@ -566,9 +595,8 @@ function ManagerCard({
         <div className="pt-4.5 z-10 flex items-center gap-2">
         <button
           onClick={() => {
-            setIsUpdating(true)
-            onInstanceAction(null, "pluginUpdate")}
-          }
+            pluginUpdater();
+          }}
           aria-label={`Update plugins for ${im.name}`}
           title={`Update plugins for ${im.name}`}
           disabled={isUpdating}

@@ -1289,6 +1289,8 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 		dest   = "plugins"
 	)
 
+	log.Printf("Updating Plugins")
+
 	fail := func(msg string, err error) {
 		http.Error(w, msg+": "+err.Error(), http.StatusInternalServerError)
 	}
@@ -1298,6 +1300,7 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 		fail("remove plugins directory failed", err)
 		return
 	}
+	log.Printf("	Existing plugins directory removed.")
 
 	// 2) Download repository zip (explicit branch) with User-Agent
 	zipURL := fmt.Sprintf("https://github.com/%s/%s/zipball/%s", owner, repo, branch)
@@ -1446,6 +1449,7 @@ func RefreshPluginsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "subdirectory not found in repo: "+subdir, http.StatusInternalServerError)
 		return
 	}
+	log.Printf("	Plugins extracted successfully.")
 
 	// success
 	w.WriteHeader(http.StatusOK)

@@ -1034,7 +1034,7 @@ func InstanceActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Sending request to:", targetURL.String())
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second}
 
 	// send empty POST request
 	resp, err := client.Post(targetURL.String(), "application/json", nil)

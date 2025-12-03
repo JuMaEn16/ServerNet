@@ -637,14 +637,13 @@ func stopServerHandler(w http.ResponseWriter, r *http.Request) {
 
 func stopServerHold(name string, srv *Server) error {
 	cmdPtr := srv.Cmd
-	srvID := srv.ID
 
 	// 1. Check if process is valid
 	if cmdPtr == nil || cmdPtr.Process == nil {
 		log.Printf("Server '%s' process not available (already stopped?)", name)
 		// Ensure status is "stopped" (nil)
 		mu.Lock()
-		serverMap[name] = nil
+		serverMap[name].Status = "restarting"
 		mu.Unlock()
 		return fmt.Errorf("server process not available (already stopped?)")
 	}
@@ -675,9 +674,6 @@ func stopServerHold(name string, srv *Server) error {
 	log.Printf("Server '%s' process stopped.", name)
 
 	// 3. Remove process references from maps
-	serversMux.Lock()
-	delete(servers, srvID)
-	serversMux.Unlock()
 
 	return nil
 }
@@ -1234,6 +1230,14 @@ func restartWorldHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// --- Server is now stopped and de-registered ---
+	localPluginsFolder := "plugins" // <-- local plugins folder you prepared
+	serverPluginsFolder := filepath.Join(dir, "plugins")
+
+	// Make sure destination plugins folder exists; copyDir will create it anyway.
+	if err := copyDir(localPluginsFolder, serverPluginsFolder); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// --- 2. Server Restart ---
 	if err := startHeldServer(name, port, dir); err != nil {

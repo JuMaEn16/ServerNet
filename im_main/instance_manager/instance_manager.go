@@ -47,8 +47,11 @@ var (
 const (
 	proxyApiHost    = "http://172.30.0.1:8081"
 	defaultFallback = "lobby"
-	token           = "" // NOTE: Hardcoded token
 	repoWorlds      = "JuMaEn16/lunexia-worlds"
+)
+
+var (
+	token = ""
 )
 
 type IntHeap []int
@@ -908,6 +911,7 @@ func saveWorldHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// "owner/repo"
 	if token == "" || repoWorlds == "" {
+		log.Printf("No Token")
 		http.Error(w, "GitHub token/repo not set", http.StatusInternalServerError)
 		return
 	}
@@ -978,44 +982,45 @@ func zipDir(srcDir, destZip string, blacklist []string) error {
 	w := zip.NewWriter(zipFile)
 	defer w.Close()
 
-	blacklistMap := make(map[string]struct{})
+	blacklistMap := map[string]struct{}{}
 	for _, name := range blacklist {
 		blacklistMap[name] = struct{}{}
 	}
 
-	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
+	return filepath.Walk(srcDir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
+			log.Printf("[zip] walk error at %s: %v", path, err)
 			return err
 		}
 
-		relPath, err := filepath.Rel(srcDir, file)
+		relPath, err := filepath.Rel(srcDir, path)
 		if err != nil {
 			return err
 		}
-
-		// skip root
 		if relPath == "." {
 			return nil
 		}
 
-		// Check blacklist: if any path segment matches, skip
+		// Blacklist check
 		parts := strings.Split(relPath, string(os.PathSeparator))
 		for _, p := range parts {
 			if _, ok := blacklistMap[p]; ok {
+				log.Printf("[zip] skipping blacklisted path: %s", relPath)
 				if fi.IsDir() {
-					return filepath.SkipDir // skip entire directory
+					return filepath.SkipDir
 				}
-				return nil // skip file
+				return nil
 			}
 		}
 
-		// directories
+		// Skip folder creation — zip auto-handles structure
 		if fi.IsDir() {
-			_, err := w.Create(relPath + "/")
-			return err
+			log.Printf("[zip] entering directory: %s", relPath)
+			return nil
 		}
 
-		// files
+		log.Printf("[zip] adding file: %s", relPath)
+
 		fh, err := zip.FileInfoHeader(fi)
 		if err != nil {
 			return err
@@ -1028,73 +1033,83 @@ func zipDir(srcDir, destZip string, blacklist []string) error {
 			return err
 		}
 
-		f, err := os.Open(file)
+		f, err := os.Open(path)
 		if err != nil {
 			return err
 		}
-		defer f.Close()
-
 		_, err = io.Copy(writer, f)
+		f.Close()
 		return err
 	})
 }
 
 func uploadFileToGitHub(localPath, repo, destPath, token, message string) error {
-	// read local file
+	// --- Read local file ---
 	content, err := os.ReadFile(localPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read local file: %w", err)
 	}
 	b64 := base64.StdEncoding.EncodeToString(content)
 
-	// parse repo into owner/repo
+	// --- Parse repo (owner/repo) ---
 	parts := strings.SplitN(repo, "/", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("GITHUB_REPO must be in owner/repo format")
+		return fmt.Errorf("repo must be owner/repo")
 	}
 	owner := parts[0]
-	reponame := parts[1]
+	repoName := parts[1]
+
+	// --- Fix token formatting ---
+	token = strings.TrimSpace(token)
+	authHeader := "token " + token // IMPORTANT → matches curl exactly
 
 	client := &http.Client{Timeout: 30 * time.Second}
 
-	// check if file exists to get its sha (for updates)
-	getURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s",
-		url.PathEscape(owner), url.PathEscape(reponame), url.PathEscape(destPath))
+	// --- Build GET URL (only escape path, NOT owner/repo) ---
+	getURL := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/contents/%s",
+		owner, repoName, url.PathEscape(destPath),
+	)
+
 	getReq, _ := http.NewRequest("GET", getURL, nil)
-	getReq.Header.Set("Authorization", "token "+token)
+	getReq.Header.Set("Authorization", authHeader)
 	getReq.Header.Set("Accept", "application/vnd.github+json")
+	getReq.Header.Set("User-Agent", "github-upload")
 
 	getResp, err := client.Do(getReq)
 	if err != nil {
-		return fmt.Errorf("failed to query existing file: %w", err)
+		return fmt.Errorf("failed GET request: %w", err)
 	}
-	// read body then close
 	bodyBytes, _ := io.ReadAll(getResp.Body)
 	getResp.Body.Close()
 
 	var sha string
-	if getResp.StatusCode == http.StatusOK {
-		// file exists -> extract sha
+
+	// --- Interpret GET response ---
+	switch getResp.StatusCode {
+	case http.StatusOK:
+		// File exists → extract SHA
 		var info struct {
 			SHA string `json:"sha"`
 		}
 		if err := json.Unmarshal(bodyBytes, &info); err != nil {
-			return fmt.Errorf("failed to parse existing file info: %w", err)
+			return fmt.Errorf("failed to parse GET response: %w", err)
 		}
 		if info.SHA == "" {
-			return fmt.Errorf("existing file returned no sha")
+			return fmt.Errorf("github returned no sha for existing file")
 		}
 		sha = info.SHA
-	} else if getResp.StatusCode == http.StatusNotFound {
-		// file does not exist -> will create (sha stays empty)
+
+	case http.StatusNotFound:
+		// File does not exist → create new
 		sha = ""
-	} else {
-		// other error (rate limit, permissions, etc.)
-		// include body for easier debugging
-		return fmt.Errorf("GitHub GET contents returned status %d: %s", getResp.StatusCode, string(bodyBytes))
+
+	default:
+		// Unexpected error
+		return fmt.Errorf("GitHub GET returned %d: %s", getResp.StatusCode, string(bodyBytes))
 	}
 
-	// prepare request body for create/update
+	// --- Build PUT body ---
 	reqBody := map[string]interface{}{
 		"message": message,
 		"content": b64,
@@ -1105,22 +1120,29 @@ func uploadFileToGitHub(localPath, repo, destPath, token, message string) error 
 	}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	putURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s",
-		owner, reponame, destPath)
+	// --- Build PUT request ---
+	putURL := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/contents/%s",
+		owner, repoName, url.PathEscape(destPath),
+	)
+
 	putReq, _ := http.NewRequest("PUT", putURL, bytes.NewReader(jsonBody))
-	putReq.Header.Set("Authorization", "token "+token)
+	putReq.Header.Set("Authorization", authHeader)
 	putReq.Header.Set("Accept", "application/vnd.github+json")
+	putReq.Header.Set("User-Agent", "github-upload")
 	putReq.Header.Set("Content-Type", "application/json")
 
 	putResp, err := client.Do(putReq)
 	if err != nil {
-		return fmt.Errorf("GitHub PUT request failed: %w", err)
+		return fmt.Errorf("PUT request failed: %w", err)
 	}
 	defer putResp.Body.Close()
 
 	respBody, _ := io.ReadAll(putResp.Body)
-	if putResp.StatusCode != http.StatusCreated && putResp.StatusCode != http.StatusOK {
-		return fmt.Errorf("GitHub API error: status %d: %s", putResp.StatusCode, string(respBody))
+
+	// Expect 200 (update) or 201 (create)
+	if putResp.StatusCode != http.StatusOK && putResp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("GitHub PUT %d: %s", putResp.StatusCode, string(respBody))
 	}
 
 	return nil
@@ -1230,7 +1252,7 @@ func restartWorldHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// --- Server is now stopped and de-registered ---
-	localPluginsFolder := "plugins" // <-- local plugins folder you prepared
+	localPluginsFolder := "plugins"
 	serverPluginsFolder := filepath.Join(dir, "plugins")
 
 	// Make sure destination plugins folder exists; copyDir will create it anyway.
@@ -1467,7 +1489,7 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	token := os.Getenv("GITHUB_TOKEN")
+	token = os.Getenv("GITHUB_TOKEN")
 	if token == "" {
 		log.Fatal("GITHUB_TOKEN not found in environment")
 	}

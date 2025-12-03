@@ -651,6 +651,7 @@ func waitForInstance(name string) {
 var PreferredIMs = map[string][]string{
 	"lobby":            {"Ju Server"},
 	"lunaris_asteroid": {"Ju PC"},
+	"lunaris":          {"Ju PC"},
 	"wheat":            {"Ju PC"},
 }
 

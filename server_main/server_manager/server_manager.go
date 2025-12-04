@@ -1007,7 +1007,7 @@ func runVelocity(dir, command string, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func StopCommand() {
+func stopVelocity() {
 	if velocityCancel != nil {
 		velocityCancel()
 	}
@@ -1132,6 +1132,16 @@ func addPlayer(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(player)
 }
 
+func RestartHandler(w http.ResponseWriter, r *http.Request) {
+    // Stop the running command
+    stopVelocity()
+
+    // Start it again
+	runVelocity("./proxy", "java", "-jar", "velocity.jar")
+
+    w.Write([]byte("Process restarted\n"))
+}
+
 func main() {
 	loadConfig()
 
@@ -1149,7 +1159,7 @@ func main() {
 			return
 		}
 	}()
-
+	
 	runVelocity("./proxy", "java", "-jar", "velocity.jar")
 
 	go func() {
@@ -1180,6 +1190,7 @@ func main() {
 	http.HandleFunc("/move", moveHandler)
 	http.HandleFunc("/move_all", moveAllHandler)
 	http.HandleFunc("/action", InstanceActionHandler)
+	http.HandleFunc("/restart", RestartHandler)
 	//http.HandleFunc("/restart-instance", restartWorldHandler)
 
 	port := 8080

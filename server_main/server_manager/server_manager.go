@@ -985,7 +985,7 @@ func runCommand(dir string, command string, args ...string) {
 	}()
 }
 
-func RunVelocity(dir, command string, args ...string) *exec.Cmd {
+func runVelocity(dir, command string, args ...string) *exec.Cmd {
 	// Cancel any previous command
 	if velocityCancel != nil {
 		velocityCancel()

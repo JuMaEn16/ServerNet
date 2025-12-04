@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"context"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -91,6 +92,8 @@ var (
 	configFile       = "ims_config.json"
 	mu               sync.Mutex
 	httpClient       = &http.Client{Timeout: 5 * time.Second}
+	currentCtx    context.Context
+    currentCancel context.CancelFun
 )
 
 // Load instance managers from config
@@ -970,16 +973,19 @@ func moveAllHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Moved from %s to server %s", req.Origin, req.Destination)
 }
 
-func runCommand(dir string, command string, args ...string) {
+func runCommand(ctx context.Context, dir string, command string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, command, args...)
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	go func() {
-		cmd := exec.Command(command, args...)
-		cmd.Dir = dir
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			log.Printf("Failed to run %s in %s: %v", command, dir, err)
 		}
 	}()
+
+	return cmd
 }
 
 func InstanceActionHandler(w http.ResponseWriter, r *http.Request) {

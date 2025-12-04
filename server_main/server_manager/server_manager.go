@@ -973,7 +973,19 @@ func moveAllHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Moved from %s to server %s", req.Origin, req.Destination)
 }
 
-func runCommand(ctx context.Context, dir string, command string, args ...string) *exec.Cmd {
+func runCommand(dir string, command string, args ...string) {
+	go func() {
+		cmd := exec.Command(command, args...)
+		cmd.Dir = dir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			log.Printf("Failed to run %s in %s: %v", command, dir, err)
+		}
+	}()
+}
+
+func runCommandContext(ctx context.Context, dir string, command string, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout

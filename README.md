@@ -12,6 +12,5 @@ Instance Manager
 
 TO DO
 - Web Interface ->
-  - Proper CPU and RAM Usage of Instances Board
-  - CPU/RAM NaN after Downtime
-  - Plugin Update Button on each IM
+    - Restart Proxy Button
+    - Wartungsarbeiten

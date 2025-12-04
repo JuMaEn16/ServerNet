@@ -985,19 +985,32 @@ func runCommand(dir string, command string, args ...string) {
 	}()
 }
 
-func runCommandContext(ctx context.Context, dir string, command string, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, command, args...)
+func RunVelocity(dir, command string, args ...string) *exec.Cmd {
+	// Cancel any previous command
+	if velocityCancel != nil {
+		velocityCancel()
+	}
+
+	velocityCtx, velocityCancel = context.WithCancel(context.Background())
+
+	cmd := exec.CommandContext(velocityCtx, command, args...)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	go func() {
 		if err := cmd.Run(); err != nil {
-			log.Printf("Failed to run %s in %s: %v", command, dir, err)
+			log.Printf("Command exited: %v", err)
 		}
 	}()
 
 	return cmd
+}
+
+func StopCommand() {
+	if velocityCancel != nil {
+		velocityCancel()
+	}
 }
 
 func InstanceActionHandler(w http.ResponseWriter, r *http.Request) {
@@ -1137,7 +1150,7 @@ func main() {
 		}
 	}()
 
-	runCommand("./proxy", "java", "-jar", "velocity.jar")
+	runVelocity("./proxy", "java", "-jar", "velocity.jar")
 
 	go func() {
 		time.Sleep(10 * time.Second) // let server come up

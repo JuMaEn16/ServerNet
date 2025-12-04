@@ -89,9 +89,11 @@ scoreboard:
       title: "%animation:logo%"
       display-condition: "%player-version-id%>=765;%bedrock%=false" # Only display it to players using 1.20.3+ AND NOT bedrock edition
       lines:
-        - "<dark_gray>&m                                     </dark_gray>"
+        - "<dark_gray>&m                                 </dark_gray>"
         - ""
+        - "&6&l🎮 Online&7: &f%online%"
         - "&a&l🌐 Ping&7: &f%ping%&8ms"
+        - "&c&l🚨 TPS&7: &f%tps%"
         - ""
         - "<dark_gray>&m                                     </dark_gray>"
     scoreboard:
@@ -99,9 +101,11 @@ scoreboard:
       lines:
         - "<dark_gray>&m                                     </dark_gray>"
         - ""
+        - "&6&l🎮 Online&7: &f%online%"
         - "&a&l🌐 Ping&7: &f%ping%&8ms"
+        - "&c&l🚨 TPS&7: &f%tps%"
         - ""
-        - "<dark_gray>&m                                     </dark_gray>"
+        - "<dark_gray>&m                                 </dark_gray>"
 
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Layout
 layout:

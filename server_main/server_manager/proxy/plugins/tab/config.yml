@@ -94,6 +94,7 @@ scoreboard:
         - "&6&l🎮 Online&7: &f%online%"
         - "&a&l🌐 Ping&7: &f%ping%&8ms"
         - "&c&l🚨 TPS&7: &f%tps%"
+        - "&1&l⏳ Playtime&7: &f%statistic_time_played%"
         - ""
         - "<dark_gray>&m                                     </dark_gray>"
     scoreboard:
@@ -104,6 +105,7 @@ scoreboard:
         - "&6&l🎮 Online&7: &f%online%"
         - "&a&l🌐 Ping&7: &f%ping%&8ms"
         - "&c&l🚨 TPS&7: &f%tps%"
+        - "&1&l⏳ Playtime&7: &f%statistic_time_played%"
         - ""
         - "<dark_gray>&m                                 </dark_gray>"
 

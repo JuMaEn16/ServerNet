@@ -89,30 +89,19 @@ scoreboard:
       title: "%animation:logo%"
       display-condition: "%player-version-id%>=765;%bedrock%=false" # Only display it to players using 1.20.3+ AND NOT bedrock edition
       lines:
-        - "<dark_gray>&m                                          </dark_gray>"
-        - "&6Online:"
-        - "* &eOnline&7:||%online%"
-        - "* &eStaff&7:||%staffonline%"
+        - "<dark_gray>&m                                     </dark_gray>"
         - ""
-        - "&6Personal Info:"
-        - "* &bRank&7:||%group%"
-        - "* &bPing&7:||%ping%&8ms"
-        - "* &bWorld&7:||%world%"
-        - "<dark_gray>&m                                          </dark_gray>"
+        - "&a&l🌐 Ping&7: &f%ping%&8ms"
+        - ""
+        - "<dark_gray>&m                                     </dark_gray>"
     scoreboard:
       title: "%animation:logo%"
       lines:
-        - "<dark_gray>&m                                          </dark_gray>"
-        - "&6Online:"
-        - "* &eOnline&7: &f%online%"
-        - "* &eCurrent World&7: &f%worldonline%"
-        - "* &eStaff&7: &f%staffonline%"
+        - "<dark_gray>&m                                     </dark_gray>"
         - ""
-        - "&6Personal Info:"
-        - "* &bRank&7: &f%group%"
-        - "* &bPing&7: &f%ping%&8ms"
-        - "* &bWorld&7: &f%world%"
-        - "<dark_gray>&m                                          </dark_gray>"
+        - "&a&l🌐 Ping&7: &f%ping%&8ms"
+        - ""
+        - "<dark_gray>&m                                     </dark_gray>"
 
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Layout
 layout:

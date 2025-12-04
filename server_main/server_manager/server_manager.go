@@ -92,8 +92,8 @@ var (
 	configFile       = "ims_config.json"
 	mu               sync.Mutex
 	httpClient       = &http.Client{Timeout: 5 * time.Second}
-	currentCtx    context.Context
-    currentCancel context.CancelFunc
+	velocityCtx      context.Context
+    velocityCancel   context.CancelFunc
 )
 
 // Load instance managers from config

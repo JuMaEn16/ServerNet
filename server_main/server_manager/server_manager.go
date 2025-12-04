@@ -93,7 +93,7 @@ var (
 	mu               sync.Mutex
 	httpClient       = &http.Client{Timeout: 5 * time.Second}
 	currentCtx    context.Context
-    currentCancel context.CancelFun
+    currentCancel context.CancelFunc
 )
 
 // Load instance managers from config

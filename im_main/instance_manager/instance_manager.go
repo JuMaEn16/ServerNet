@@ -237,6 +237,9 @@ online-mode=false
 
 	// Write LunexiaMain config (plugin folder)
 	configLunexia := fmt.Sprintf(`type: "%s"`, name)
+	if strings.HasPrefix(name, "lunaris_asteroid_") {
+		configLunexia = `type: "lunaris"`
+	}
 
 	lunexiaDst := filepath.Join(serverPluginsFolder, "LunexiaMain")
 	if err := os.MkdirAll(lunexiaDst, 0755); err != nil {
@@ -940,6 +943,9 @@ func saveWorldHandler(w http.ResponseWriter, r *http.Request) {
 
 	// destination path in repo: {name}.zip
 	destPath := path.Base(fmt.Sprintf("%s.zip", name))
+	if strings.HasPrefix(name, "lunaris_asteroid_") {
+		destPath = path.Join("lunaris_asteroid", fmt.Sprintf("%s.zip", name))
+	}
 
 	log.Printf("Uploading world for '%s' to GitHub...", name)
 	if err := uploadFileToGitHub(zipPath, repoWorlds, destPath, token, fmt.Sprintf("Save world %s at %s", name, time.Now().UTC().Format(time.RFC3339))); err != nil {

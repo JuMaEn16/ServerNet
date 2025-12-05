@@ -506,6 +506,8 @@ func registerInstanceToProxy(name, domain string, port int) {
 		port,
 	)
 
+	log.Printf("Registering: %s", addURL)
+
 	r, err := httpClient.Get(addURL)
 	if err != nil {
 		log.Printf("Failed to add existing instance '%s' to proxy: %v", name, err)

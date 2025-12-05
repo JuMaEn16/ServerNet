@@ -236,9 +236,13 @@ online-mode=false
 	}
 
 	// Write LunexiaMain config (plugin folder)
-	configLunexia := fmt.Sprintf(`type: "%s"`, name)
+	configLunexia := fmt.Sprintf(
+		`type: "%s"
+subtype: ""`, name)
 	if strings.HasPrefix(name, "lunaris_asteroid_") {
-		configLunexia = `type: "lunaris"`
+		configLunexia =
+			`type: "lunaris"
+subtype: "asteroid"`
 	}
 
 	lunexiaDst := filepath.Join(serverPluginsFolder, "LunexiaMain")
@@ -615,7 +619,9 @@ func startServerHandler(w http.ResponseWriter, r *http.Request) {
 	allocatedAndPending = false
 
 	fmt.Printf("Paper server '%s' fully started on port %d\n", name, srv.Port)
-	w.Write([]byte(fmt.Sprintf("Server '%s' started on port %d", name, srv.Port)))
+	json.NewEncoder(w).Encode(map[string]any{
+		"port": srv.Port,
+	})
 }
 
 // /// Example stop handler that returns the freed port to the pool /////

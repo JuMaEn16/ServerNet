@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"context"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -93,7 +93,7 @@ var (
 	mu               sync.Mutex
 	httpClient       = &http.Client{Timeout: 5 * time.Second}
 	velocityCtx      context.Context
-    velocityCancel   context.CancelFunc
+	velocityCancel   context.CancelFunc
 )
 
 // Load instance managers from config
@@ -522,6 +522,21 @@ func registerInstanceToProxy(name, domain string, port int) {
 	log.Printf("Instance '%s' registered to proxy (host: %s, port: %d).", name, host, port)
 }
 
+func saveWorldOnIM(domain, name string) error {
+	stopURL := fmt.Sprintf("http://%s/save-instance?name=%s", domain, url.QueryEscape(name))
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(stopURL)
+	if err != nil {
+		return fmt.Errorf("request to IM %s failed: %w", stopURL, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("IM save-instance returned status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
 func stopServerOnIM(domain, name string) error {
 	stopURL := fmt.Sprintf("http://%s/stop-server?name=%s", domain, url.QueryEscape(name))
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -579,6 +594,16 @@ func cleanupEmptyServers() {
 			// only consider servers that are running/started (you can extend statuses if desired)
 			if inst.PlayerCount == 0 && (inst.Status == "running" || inst.Status == "started") {
 				log.Printf("cleanup: found empty instance '%s' on %s (port %d). Attempting to stop and unregister.", inst.Name, im.Domain, inst.Port)
+
+				// Save world before stopping (optional, depending on your needs)
+				if strings.HasPrefix(inst.Name, "lunaris_asteroid_") {
+					if err := saveWorldOnIM(im.Domain, inst.Name); err != nil {
+						log.Printf("cleanup: failed to save world for instance '%s' on %s: %v", inst.Name, im.Domain, err)
+						// continue to next instance — don't attempt stop or remove if save failed
+						continue
+					}
+					log.Printf("cleanup: save-instance request sent for '%s' on %s", inst.Name, im.Domain)
+				}
 
 				// 1) Stop the server on the IM
 				if err := stopServerOnIM(im.Domain, inst.Name); err != nil {
@@ -1133,13 +1158,13 @@ func addPlayer(w http.ResponseWriter, r *http.Request) {
 }
 
 func RestartHandler(w http.ResponseWriter, r *http.Request) {
-    // Stop the running command
-    stopVelocity()
+	// Stop the running command
+	stopVelocity()
 
-    // Start it again
+	// Start it again
 	runVelocity("./proxy", "java", "-jar", "velocity.jar")
 
-    w.Write([]byte("Process restarted\n"))
+	w.Write([]byte("Process restarted\n"))
 }
 
 func main() {
@@ -1159,7 +1184,7 @@ func main() {
 			return
 		}
 	}()
-	
+
 	runVelocity("./proxy", "java", "-jar", "velocity.jar")
 
 	go func() {

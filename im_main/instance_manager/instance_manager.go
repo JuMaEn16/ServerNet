@@ -191,7 +191,7 @@ online-mode=false
 [
     {
         "uuid": "ff642073-9c37-4956-8404-7d10fabaf254",
-        "name": "JuMaEn16",
+        "name": "Ang2l",
         "level": 4,
         "bypassesPlayerLimit": false
     },
@@ -204,6 +204,12 @@ online-mode=false
 	{
 		"uuid": "5bc2018e-5e89-45c8-98fe-1b9891361a8e",
         "name": "ANico09",
+        "level": 4,
+        "bypassesPlayerLimit": false
+	},
+	{
+		"uuid": "10b8cd93-3e0f-46cf-ab9e-f337a6747559",
+        "name": "Haz3e",
         "level": 4,
         "bypassesPlayerLimit": false
 	}
@@ -240,8 +246,24 @@ online-mode=false
 		return err
 	}
 
-	// --- WORLD DOWNLOAD HERE ---
 	worldURL := fmt.Sprintf("https://raw.githubusercontent.com/JuMaEn16/lunexia-worlds/main/%s.zip", name)
+	if strings.HasPrefix(name, "lunaris_asteroid_") {
+		worldURL = fmt.Sprintf("https://raw.githubusercontent.com/JuMaEn16/lunexia-worlds/main/lunaris_asteroid/%s.zip", name)
+
+		result := make(chan error)
+		DownloadWorldAsync(worldURL, token, dir, result)
+
+		fmt.Println("[World] Waiting for download of specific player + extraction...")
+		if err := <-result; err != nil {
+			fmt.Printf("[World] Install failed for specific player: %v\n", err)
+		} else {
+			return nil
+		}
+
+		fmt.Printf("[World] Falling back to default asteroid world for '%s'\n", name)
+
+		worldURL = "https://raw.githubusercontent.com/JuMaEn16/lunexia-worlds/main/lunaris_asteroid.zip"
+	}
 
 	result := make(chan error)
 	DownloadWorldAsync(worldURL, token, dir, result)

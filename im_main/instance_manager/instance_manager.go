@@ -555,7 +555,7 @@ func startServerHandler(w http.ResponseWriter, r *http.Request) {
 	// build command
 	cmd := exec.Command(
 		"java",
-		"-Xmx2G", "-Xms2G",
+		"-Xmx8G", "-Xms8G",
 		"-jar", "paper.jar",
 		"--nogui",
 	)

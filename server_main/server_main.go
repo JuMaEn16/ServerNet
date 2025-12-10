@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -22,17 +23,27 @@ import (
 const (
 	repoOwner = "JuMaEn16"
 	repoName  = "ServerNet"
+
 	// path inside the repo / zip to the subtree we care about:
 	watchedSubdir = "server_main/server_manager"
 	// local directory name to place the subtree into:
 	watchedSubdirLocal = "server_manager"
-	versionFileName    = ".current_version"
-	httpTimeout        = 60 * time.Second
+
+	versionFileName = ".current_version"
+	httpTimeout     = 60 * time.Second
 )
 
 var (
 	ErrRemoteVersionNotFound = errors.New("remote version file not found")
 	ErrZipballNotFound       = errors.New("zipball not found (404) — repo may be private or removed")
+
+	httpClient = &http.Client{Timeout: httpTimeout}
+
+	githubToken = os.Getenv("GITHUB_TOKEN")
+
+	// Child process tracking for restart API
+	childMu  sync.Mutex
+	childCmd *exec.Cmd
 )
 
 type ghContent struct {
@@ -47,6 +58,9 @@ type ghContent struct {
 
 func main() {
 	log.SetFlags(0)
+
+	// Start tiny control HTTP server for restarts
+	go startControlAPI()
 
 	localVersion, _ := readLocalVersion()
 	println(localVersion)
@@ -106,16 +120,87 @@ func main() {
 	}
 }
 
-func readLocalVersion() (string, error) {
-	b, err := os.ReadFile(versionFileName)
-	if err != nil {
-		return "", err
+// ----------------- Control HTTP API & restart logic -----------------
+
+func startControlAPI() {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/restart-all", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "use POST", http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Restarting updater and instance_manager...\n"))
+
+		// Do restart asynchronously so the response can flush
+		go func() {
+			// 1) stop current child
+			stopChild()
+
+			// 2) small delay just to let logs flush, etc.
+			time.Sleep(1 * time.Second)
+
+			// 3) exec ourselves
+			if err := selfRestart(); err != nil {
+				log.Printf("selfRestart failed: %v", err)
+			}
+		}()
+	})
+
+	srv := &http.Server{
+		Addr:    "127.0.0.1:8090", // only listen on localhost
+		Handler: mux,
 	}
-	return strings.TrimSpace(string(b)), nil
+
+	log.Println("Control API listening on http://127.0.0.1:8090")
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("control HTTP server error: %v", err)
+	}
 }
 
-func writeLocalVersion(content string) error {
-	return os.WriteFile(versionFileName, []byte(strings.TrimSpace(content)), 0644)
+// stopChild tries to gracefully stop the child process, then force-kills if needed.
+func stopChild() {
+	childMu.Lock()
+	cmd := childCmd
+	childMu.Unlock()
+
+	if cmd == nil || cmd.Process == nil {
+		return
+	}
+
+	log.Println("Stopping child process...")
+
+	// try graceful stop first
+	_ = cmd.Process.Signal(os.Interrupt)
+
+	// wait a bit and then force kill if still running
+	time.Sleep(10 * time.Second)
+
+	if cmd.ProcessState == nil || !cmd.ProcessState.Exited() {
+		log.Println("Child did not stop in time; killing")
+		_ = cmd.Process.Kill()
+	}
+}
+
+// selfRestart replaces the current process with a new instance of the same binary.
+func selfRestart() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	// Replace current process image; does not return on success.
+	return syscall.Exec(exe, os.Args, os.Environ())
+}
+
+// ----------------- GitHub helpers -----------------
+
+func addGitHubHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", "ServerNet-updater")
+	if githubToken != "" {
+		req.Header.Set("Authorization", "Bearer "+githubToken)
+	}
 }
 
 func fetchRemoteVersionContent(path string) (string, error) {
@@ -123,12 +208,15 @@ func fetchRemoteVersionContent(path string) (string, error) {
 	defer cancel()
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", repoOwner, repoName, path)
-	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	// repo is public now — no Authorization header
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	addGitHubHeaders(req)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -137,25 +225,25 @@ func fetchRemoteVersionContent(path string) (string, error) {
 	if resp.StatusCode == http.StatusNotFound {
 		return "", ErrRemoteVersionNotFound
 	}
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("github api error: %s - %s", resp.Status, string(body))
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return "", fmt.Errorf("unexpected status from GitHub contents API: %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 
-	var content ghContent
-	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(&content); err != nil {
+	var gc ghContent
+	if err := json.NewDecoder(resp.Body).Decode(&gc); err != nil {
 		return "", err
 	}
 
-	if content.Encoding == "base64" {
-		decoded, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(content.Content, "\n", ""))
+	if strings.ToLower(gc.Encoding) == "base64" {
+		data, err := base64.StdEncoding.DecodeString(gc.Content)
 		if err != nil {
 			return "", err
 		}
-		return strings.TrimSpace(string(decoded)), nil
+		return string(data), nil
 	}
-	return strings.TrimSpace(content.Content), nil
+
+	return gc.Content, nil
 }
 
 func fetchLatestCommitSHA() (string, error) {
@@ -163,238 +251,182 @@ func fetchLatestCommitSHA() (string, error) {
 	defer cancel()
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits?per_page=1", repoOwner, repoName)
-	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	addGitHubHeaders(req)
 	req.Header.Set("Accept", "application/vnd.github+json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("github api error fetching commits: %s - %s", resp.Status, string(body))
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return "", fmt.Errorf("unexpected status from GitHub commits API: %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 
-	var arr []struct {
-		SHA string `json:"sha"`
+	var commits []struct {
+		Sha string `json:"sha"`
 	}
-	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(&arr); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&commits); err != nil {
 		return "", err
 	}
-	if len(arr) == 0 || arr[0].SHA == "" {
-		return "", errors.New("no commits returned")
+	if len(commits) == 0 || commits[0].Sha == "" {
+		return "", errors.New("no commits returned from GitHub API")
 	}
-	return arr[0].SHA, nil
+	return commits[0].Sha, nil
 }
 
+// ----------------- Updating / zip handling -----------------
+
 func updateInstanceManager() error {
-	// Try zipball download first
-	err := downloadAndExtractZipball()
-	if err == nil {
-		return nil
+	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
+	defer cancel()
+
+	zipPath, err := downloadZipball(ctx)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(zipPath)
+
+	tmpDir, err := os.MkdirTemp("", "servernet-update-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	if err := extractWatchedSubdirFromZip(zipPath, tmpDir); err != nil {
+		return fmt.Errorf("failed to extract watched subdir from zip: %w", err)
 	}
 
-	// If zipball not found, instruct user and attempt git-clone fallback.
-	if errors.Is(err, ErrZipballNotFound) {
-		return fmt.Errorf("%w\n\nThe repository zipball was not found. Ensure the repository %s/%s exists and is public", ErrZipballNotFound, repoOwner, repoName)
+	src := filepath.Join(tmpDir, watchedSubdirLocal)
+	if err := moveOrCopyDir(src, watchedSubdirLocal); err != nil {
+		return fmt.Errorf("failed to move/copy extracted dir into place: %w", err)
 	}
 
-	// Otherwise try git-clone fallback
-	log.Println("Zipball download failed, attempting git clone fallback...")
-	if err := cloneAndCopySubdir(); err != nil {
-		return fmt.Errorf("git clone fallback failed: %w (original zipball error: %v)", err, err)
-	}
 	return nil
 }
 
-func downloadAndExtractZipball() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*httpTimeout)
-	defer cancel()
+func downloadZipball(ctx context.Context) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/zipball", repoOwner, repoName)
 
-	zipURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/zipball", repoOwner, repoName)
-	req, _ := http.NewRequestWithContext(ctx, "GET", zipURL, nil)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	// public repo => no Authorization header
-
-	client := &http.Client{
-		Timeout: 10 * httpTimeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// no special header copying required for public repos
-			return nil
-		},
-	}
-	resp, err := client.Do(req)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return err
+		return "", err
+	}
+	addGitHubHeaders(req)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return ErrZipballNotFound
+		return "", ErrZipballNotFound
 	}
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to download zipball: %s - %s", resp.Status, string(body))
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return "", fmt.Errorf("unexpected status from GitHub zipball: %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 
-	tmpZipFile, err := os.CreateTemp("", "repo-zip-*.zip")
+	tmpFile, err := os.CreateTemp("", "servernet-*.zip")
 	if err != nil {
-		return err
+		return "", fmt.Errorf("failed to create temp zip file: %w", err)
 	}
-	defer func() {
-		tmpZipFile.Close()
-		os.Remove(tmpZipFile.Name())
-	}()
+	defer tmpFile.Close()
 
-	if _, err := io.Copy(tmpZipFile, resp.Body); err != nil {
-		return err
-	}
-	if _, err := tmpZipFile.Seek(0, io.SeekStart); err != nil {
-		return err
+	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
+		return "", fmt.Errorf("failed to download zipball: %w", err)
 	}
 
-	stat, err := tmpZipFile.Stat()
+	return tmpFile.Name(), nil
+}
+
+// extractWatchedSubdirFromZip extracts the subtree watchedSubdir into destRoot/watchedSubdirLocal.
+func extractWatchedSubdirFromZip(zipPath, destRoot string) error {
+	r, err := zip.OpenReader(zipPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open zip: %w", err)
 	}
-	zr, err := zip.NewReader(tmpZipFile, stat.Size())
-	if err != nil {
-		return err
+	defer r.Close()
+
+	if len(r.File) == 0 {
+		return errors.New("zipball appears to be empty")
 	}
 
-	tempDir, err := os.MkdirTemp("", "repo-extract-*")
-	if err != nil {
-		return err
+	// Figure out the top-level directory name inside the zip (e.g. "owner-repo-<sha>/...").
+	firstName := r.File[0].Name
+	top := strings.SplitN(firstName, "/", 2)[0]
+	if top == "" {
+		return fmt.Errorf("unexpected zip entry path: %q", firstName)
 	}
-	defer os.RemoveAll(tempDir)
 
-	extractedAny := false
-	for _, f := range zr.File {
-		fpath := f.Name
-		parts := strings.SplitN(fpath, "/", 2)
-		if len(parts) < 2 {
+	watchedPrefix := top + "/" + watchedSubdir + "/"
+	destBase := filepath.Join(destRoot, watchedSubdirLocal)
+
+	for _, f := range r.File {
+		name := f.Name
+		if !strings.HasPrefix(name, watchedPrefix) {
 			continue
 		}
-		rest := parts[1]
-		if !strings.HasPrefix(rest, watchedSubdir+"/") && rest != watchedSubdir {
+		rel := strings.TrimPrefix(name, watchedPrefix)
+		if rel == "" {
+			// This is the directory entry for watchedSubdir itself
 			continue
 		}
-		rel := strings.TrimPrefix(rest, watchedSubdir+"/")
-		// place into watchedSubdirLocal inside our temp extraction dir
-		destPath := filepath.Join(tempDir, watchedSubdirLocal, rel)
+		target := filepath.Join(destBase, rel)
 
 		if f.FileInfo().IsDir() {
-			if err := os.MkdirAll(destPath, 0755); err != nil {
+			if err := os.MkdirAll(target, f.Mode()); err != nil {
 				return err
 			}
 			continue
-		} else {
-			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-				return err
-			}
-			rc, err := f.Open()
-			if err != nil {
-				return err
-			}
-			outf, err := os.Create(destPath)
-			if err != nil {
-				rc.Close()
-				return err
-			}
-			_, err = io.Copy(outf, rc)
-			rc.Close()
-			outf.Close()
-			if err != nil {
-				return err
-			}
-			_ = os.Chmod(destPath, f.Mode())
-			extractedAny = true
 		}
-	}
 
-	if !extractedAny {
-		return fmt.Errorf("didn't find %s in repository archive", watchedSubdir)
-	}
+		// ensure parent dir exists
+		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+			return err
+		}
 
-	// Replace local watchedSubdirLocal atomically: remove old and move new into place
-	if _, err := os.Stat(watchedSubdirLocal); err == nil {
-		backupDir, err := os.MkdirTemp("", "instance_manager-backup-*")
+		rc, err := f.Open()
 		if err != nil {
 			return err
 		}
-		if err := moveDirAtomic(watchedSubdirLocal, filepath.Join(backupDir, watchedSubdirLocal)); err != nil {
-			_ = os.RemoveAll(backupDir)
-			return fmt.Errorf("failed to move old %s to backup: %w", watchedSubdirLocal, err)
-		}
-		defer func() {
-			_ = os.RemoveAll(backupDir)
-		}()
-	}
 
-	newPath := filepath.Join(tempDir, watchedSubdirLocal)
-	if err := moveDirAtomic(newPath, watchedSubdirLocal); err != nil {
-		return fmt.Errorf("failed to move new %s into place: %w", watchedSubdirLocal, err)
-	}
-
-	log.Println("Successfully updated", watchedSubdirLocal, "via zipball")
-	return nil
-}
-
-func cloneAndCopySubdir() error {
-	tmpDir, err := os.MkdirTemp("", "repo-clone-*")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmpDir)
-
-	cloneURL := fmt.Sprintf("https://github.com/%s/%s.git", repoOwner, repoName)
-
-	// Clone shallow to tmpDir.
-	cmd := exec.Command("git", "clone", "--depth=1", "--single-branch", cloneURL, tmpDir)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = nil
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("git clone failed: %w", err)
-	}
-
-	src := filepath.Join(tmpDir, watchedSubdir)
-	if _, err := os.Stat(src); err != nil {
-		return fmt.Errorf("cloned repo does not contain %s: %w", watchedSubdir, err)
-	}
-
-	// Replace existing watchedSubdirLocal atomically
-	if _, err := os.Stat(watchedSubdirLocal); err == nil {
-		backupDir, err := os.MkdirTemp("", "instance_manager-backup-*")
+		out, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, f.Mode())
 		if err != nil {
+			_ = rc.Close()
 			return err
 		}
-		if err := moveDirAtomic(watchedSubdirLocal, filepath.Join(backupDir, watchedSubdirLocal)); err != nil {
-			_ = os.RemoveAll(backupDir)
-			return fmt.Errorf("failed to move old %s to backup: %w", watchedSubdirLocal, err)
+
+		if _, err := io.Copy(out, rc); err != nil {
+			_ = rc.Close()
+			_ = out.Close()
+			return err
 		}
-		defer func() { _ = os.RemoveAll(backupDir) }()
+		_ = rc.Close()
+		_ = out.Close()
 	}
 
-	if err := moveDirAtomic(src, watchedSubdirLocal); err != nil {
-		return fmt.Errorf("failed to move cloned %s into place: %w", watchedSubdirLocal, err)
-	}
-
-	log.Println("Successfully updated", watchedSubdirLocal, "via git clone fallback")
 	return nil
 }
 
-// moveDirAtomic tries to rename src->dest. If rename fails with EXDEV, it copies src->dest and removes src.
-func moveDirAtomic(src, dest string) error {
-	// try rename first
-	if err := os.Rename(src, dest); err == nil {
-		return nil
-	} else {
-		// if it's not a link error with EXDEV, return the error
+// moveOrCopyDir tries to os.Rename src -> dest, and if that fails with EXDEV, falls back to copy+remove.
+func moveOrCopyDir(src, dest string) error {
+	// remove existing dest
+	if err := os.RemoveAll(dest); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove existing dest dir %s: %w", dest, err)
+	}
+
+	if err := os.Rename(src, dest); err != nil {
+		// if it's a cross-device link error with EXDEV, return the error
 		var linkErr *os.LinkError
 		if errors.As(err, &linkErr) {
 			if pe, ok := linkErr.Err.(syscall.Errno); ok && pe == syscall.EXDEV {
@@ -411,6 +443,7 @@ func moveDirAtomic(src, dest string) error {
 		}
 		return err
 	}
+	return nil
 }
 
 // copyDir recursively copies src to dest, preserving modes and symlinks.
@@ -476,6 +509,20 @@ func copyDir(src, dest string) error {
 	})
 }
 
+// ----------------- Version file + running child -----------------
+
+func readLocalVersion() (string, error) {
+	data, err := os.ReadFile(versionFileName)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func writeLocalVersion(version string) error {
+	return os.WriteFile(versionFileName, []byte(version), 0644)
+}
+
 func runInstanceManager() error {
 	if _, err := os.Stat(watchedSubdirLocal); err != nil {
 		return fmt.Errorf("%s does not exist: %w", watchedSubdirLocal, err)
@@ -488,8 +535,22 @@ func runInstanceManager() error {
 	cmd.Stdin = os.Stdin
 	cmd.Env = os.Environ()
 
+	// remember the child
+	childMu.Lock()
+	childCmd = cmd
+	childMu.Unlock()
+
 	log.Printf("Running `go run .` in ./%s ...\n", watchedSubdirLocal)
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+
+	// child exited; clear it
+	childMu.Lock()
+	if childCmd == cmd {
+		childCmd = nil
+	}
+	childMu.Unlock()
+
+	if err != nil {
 		return fmt.Errorf("go run failed: %w", err)
 	}
 	return nil

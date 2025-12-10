@@ -1012,6 +1012,38 @@ func runCommand(dir string, command string, args ...string) {
 	}()
 }
 
+func runVelocityWait(dir, command string, args ...string) *exec.Cmd {
+	// Cancel any previous command
+	if velocityCancel != nil {
+		velocityCancel()
+	}
+
+	velocityCtx, velocityCancel = context.WithCancel(context.Background())
+
+	cmd := exec.CommandContext(velocityCtx, command, args...)
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Start process immediately
+	if err := cmd.Start(); err != nil {
+		log.Printf("Failed to start command: %v", err)
+		return cmd
+	}
+
+	// Log "Done" (or whatever text you want)
+	log.Println("Velocity process started")
+
+	// Keep waiting in background
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			log.Printf("Command exited: %v", err)
+		}
+	}()
+
+	return cmd
+}
+
 func runVelocity(dir, command string, args ...string) *exec.Cmd {
 	// Cancel any previous command
 	if velocityCancel != nil {
@@ -1164,7 +1196,7 @@ func RestartHandler(w http.ResponseWriter, r *http.Request) {
 	stopVelocity()
 
 	// Start it again
-	runVelocity("./proxy", "java", "-jar", "velocity.jar")
+	runVelocityWait("./proxy", "java", "-jar", "velocity.jar")
 
 	w.Write([]byte("Process restarted\n"))
 }

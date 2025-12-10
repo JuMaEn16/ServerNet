@@ -244,7 +244,7 @@ export default function MinecraftProxyDashboard() {
         console.log(`Restart error: ${err.message || err}`);
       }
     } finally {
-        console.log("Restart process completed");
+      console.log("Restart process completed");
       setIsRestarting(false);
     }
   }
@@ -344,7 +344,36 @@ export default function MinecraftProxyDashboard() {
               <div className="p-4 rounded-2xl bg-black/40 border border-purple-800/30 shadow-lg">
                 <h4 className="text-sm text-purple-200/80 mb-3">Quick actions</h4>
                 <div className="flex flex-col gap-3">
-                  <motion.button onClick={proxyRestarter} whileTap={{ scale: 0.97 }} className="px-4 py-2 rounded-lg bg-gradient-to-br from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-medium shadow cursor-pointer">Restart proxy</motion.button>
+                  <motion.button
+                    onClick={proxyRestarter}
+                    disabled={isRestarting}
+                    whileTap={!isRestarting ? { scale: 0.97 } : {}}
+                    animate={
+                      isRestarting
+                        ? { opacity: 0.7, scale: [1, 1.03, 1] }
+                        : { opacity: 1, scale: 1 }
+                    }
+                    transition={{ duration: 1.2, repeat: isRestarting ? Infinity : 0 }}
+                    className={`px-4 py-2 rounded-lg text-white font-medium shadow cursor-pointer relative
+                      ${isRestarting
+                        ? "bg-gradient-to-br from-purple-800 to-purple-600"
+                        : "bg-gradient-to-br from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400"
+                      }
+                    `}
+                  >
+                    {isRestarting ? (
+                      <div className="flex items-center gap-2">
+                        <motion.div
+                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                        />
+                        Restarting…
+                      </div>
+                    ) : (
+                      "Restart proxy"
+                    )}
+                  </motion.button>
                   <motion.button whileHover={{ scale: 1.02 }} className="px-4 py-2 rounded-lg bg-black/60 border border-purple-700/40 text-purple-200 hover:text-white cursor-pointer">Refresh</motion.button>
                   <motion.button whileHover={{ scale: 1.02 }} className="px-4 py-2 rounded-lg bg-gradient-to-br from-red-600 to-red-500 text-white font-medium shadow cursor-pointer">Kick all guests</motion.button>
                 </div>

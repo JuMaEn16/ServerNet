@@ -1,0 +1,48 @@
+[22:56:33] [main/INFO] [com.velocitypowered.proxy.VelocityServer]: Booting up Velocity 3.4.0-SNAPSHOT (git-a046f700-b557)...
+[22:56:33] [main/INFO] [com.velocitypowered.proxy.VelocityServer]: Loading localizations...
+[22:56:33] [main/INFO] [com.velocitypowered.proxy.network.ConnectionManager]: Connections will use NIO channels, Java compression, Java ciphers
+[22:56:34] [main/WARN] [com.velocitypowered.proxy.config.VelocityConfiguration]: Player info forwarding is disabled! All players will appear to be connecting from the proxy and will have offline-mode UUIDs.
+[22:56:34] [main/INFO] [com.velocitypowered.proxy.VelocityServer]: Loading plugins...
+[22:56:34] [main/INFO] [com.velocitypowered.proxy.VelocityServer]: Loaded 1 plugins
+[22:56:34] [Netty NIO Boss #0/INFO] [com.velocitypowered.proxy.network.ConnectionManager]: Listening on /[0:0:0:0:0:0:0:0]:25565
+[22:56:34] [main/INFO] [com.velocitypowered.proxy.Metrics]: Velocity and some of its plugins collect metrics and send them to bStats (https://bStats.org).
+[22:56:34] [main/INFO] [com.velocitypowered.proxy.Metrics]: bStats collects some basic information for plugin authors, like how many people use
+[22:56:34] [main/INFO] [com.velocitypowered.proxy.Metrics]: their plugin and their total player count. It's recommended to keep bStats enabled, but
+[22:56:34] [main/INFO] [com.velocitypowered.proxy.Metrics]: if you're not comfortable with this, you can opt-out by editing the config.txt file in
+[22:56:34] [main/INFO] [com.velocitypowered.proxy.Metrics]: the '/plugins/bStats/' folder and setting enabled to false.
+[22:56:34] [main/INFO] [com.velocitypowered.proxy.Velocity]: Done (2,26s)!
+[22:56:34] [main/ERROR] [TerminalConsole]: Failed to read console input
+java.io.IOException: The handle is invalid
+	at java.base/java.io.FileInputStream.readBytes(Native Method) ~[?:?]
+	at java.base/java.io.FileInputStream.read(FileInputStream.java:287) ~[?:?]
+	at java.base/java.io.BufferedInputStream.read1(BufferedInputStream.java:345) ~[?:?]
+	at java.base/java.io.BufferedInputStream.implRead(BufferedInputStream.java:420) ~[?:?]
+	at java.base/java.io.BufferedInputStream.read(BufferedInputStream.java:399) ~[?:?]
+	at java.base/sun.nio.cs.StreamDecoder.readBytes(StreamDecoder.java:350) ~[?:?]
+	at java.base/sun.nio.cs.StreamDecoder.implRead(StreamDecoder.java:393) ~[?:?]
+	at java.base/sun.nio.cs.StreamDecoder.lockedRead(StreamDecoder.java:217) ~[?:?]
+	at java.base/sun.nio.cs.StreamDecoder.read(StreamDecoder.java:171) ~[?:?]
+	at java.base/java.io.InputStreamReader.read(InputStreamReader.java:188) ~[?:?]
+	at java.base/java.io.BufferedReader.fill(BufferedReader.java:160) ~[?:?]
+	at java.base/java.io.BufferedReader.implReadLine(BufferedReader.java:370) ~[?:?]
+	at java.base/java.io.BufferedReader.readLine(BufferedReader.java:347) ~[?:?]
+	at java.base/java.io.BufferedReader.readLine(BufferedReader.java:436) ~[?:?]
+	at net.minecrell.terminalconsole.SimpleTerminalConsole.readCommands(SimpleTerminalConsole.java:180) ~[velocity.jar:3.4.0-SNAPSHOT (git-a046f700-b557)]
+	at net.minecrell.terminalconsole.SimpleTerminalConsole.start(SimpleTerminalConsole.java:143) ~[velocity.jar:3.4.0-SNAPSHOT (git-a046f700-b557)]
+	at com.velocitypowered.proxy.Velocity.main(Velocity.java:77) ~[velocity.jar:3.4.0-SNAPSHOT (git-a046f700-b557)]
+	Suppressed: java.io.IOException: The handle is invalid
+		at java.base/java.io.FileDescriptor.close0(Native Method) ~[?:?]
+		at java.base/java.io.FileDescriptor.close(FileDescriptor.java:304) ~[?:?]
+		at java.base/java.io.FileInputStream$1.close(FileInputStream.java:526) ~[?:?]
+		at java.base/java.io.FileDescriptor.closeAll(FileDescriptor.java:362) ~[?:?]
+		at java.base/java.io.FileInputStream.close(FileInputStream.java:524) ~[?:?]
+		at java.base/java.io.BufferedInputStream.close(BufferedInputStream.java:618) ~[?:?]
+		at java.base/sun.nio.cs.StreamDecoder.implClose(StreamDecoder.java:445) ~[?:?]
+		at java.base/sun.nio.cs.StreamDecoder.lockedClose(StreamDecoder.java:266) ~[?:?]
+		at java.base/sun.nio.cs.StreamDecoder.close(StreamDecoder.java:251) ~[?:?]
+		at java.base/java.io.InputStreamReader.close(InputStreamReader.java:203) ~[?:?]
+		at java.base/java.io.BufferedReader.implClose(BufferedReader.java:636) ~[?:?]
+		at java.base/java.io.BufferedReader.close(BufferedReader.java:621) ~[?:?]
+		at net.minecrell.terminalconsole.SimpleTerminalConsole.readCommands(SimpleTerminalConsole.java:183) ~[velocity.jar:3.4.0-SNAPSHOT (git-a046f700-b557)]
+		at net.minecrell.terminalconsole.SimpleTerminalConsole.start(SimpleTerminalConsole.java:143) ~[velocity.jar:3.4.0-SNAPSHOT (git-a046f700-b557)]
+		at com.velocitypowered.proxy.Velocity.main(Velocity.java:77) ~[velocity.jar:3.4.0-SNAPSHOT (git-a046f700-b557)]

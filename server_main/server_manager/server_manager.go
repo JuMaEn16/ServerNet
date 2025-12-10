@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -1018,28 +1019,89 @@ func runVelocityWait(dir, command string, args ...string) *exec.Cmd {
 		velocityCancel()
 	}
 
-	velocityCtx, velocityCancel = context.WithCancel(context.Background())
+	velocityCtx, cancel := context.WithCancel(context.Background())
+	velocityCancel = cancel
 
 	cmd := exec.CommandContext(velocityCtx, command, args...)
 	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
-	// Start process immediately
-	if err := cmd.Start(); err != nil {
-		log.Printf("Failed to start command: %v", err)
-		return cmd
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Printf("Failed to get stdout pipe: %v", err)
+		return nil
 	}
 
-	// Log "Done" (or whatever text you want)
-	log.Println("Velocity process started")
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Printf("Failed to get stderr pipe: %v", err)
+		return nil
+	}
 
-	// Keep waiting in background
+	if err := cmd.Start(); err != nil {
+		log.Printf("Failed to start command: %v", err)
+		return nil
+	}
+
+	log.Println("Velocity process started, waiting for 'Done'...")
+
+	doneCh := make(chan struct{})
+	var once sync.Once
+
+	// helper to trigger "Done detected" exactly once
+	markDone := func() {
+		once.Do(func() {
+			close(doneCh)
+		})
+	}
+
+	// Stream stdout, mirror to console, watch for "Done"
 	go func() {
-		if err := cmd.Wait(); err != nil {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			// keep original behavior: print to stdout
+			_, _ = os.Stdout.WriteString(line + "\n")
+
+			if strings.Contains(line, "Done") {
+				markDone()
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("stdout scanner error: %v", err)
+		}
+	}()
+
+	// Stream stderr, mirror to console, watch for "Done" there too (just in case)
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			// keep original behavior: print to stderr
+			_, _ = os.Stderr.WriteString(line + "\n")
+
+			if strings.Contains(line, "Done") {
+				markDone()
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("stderr scanner error: %v", err)
+		}
+	}()
+
+	// Wait in the background so the process is properly reaped
+	go func() {
+		if err := cmd.Wait(); err != nil && velocityCtx.Err() == nil {
 			log.Printf("Command exited: %v", err)
 		}
 	}()
+
+	// Block this function until we see "Done" or the context is canceled
+	select {
+	case <-doneCh:
+		log.Println("Velocity reported 'Done'; returning from runVelocity")
+	case <-velocityCtx.Done():
+		log.Println("Velocity context canceled before 'Done' was seen")
+	}
 
 	return cmd
 }

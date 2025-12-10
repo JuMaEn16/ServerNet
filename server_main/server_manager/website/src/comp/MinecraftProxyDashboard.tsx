@@ -244,6 +244,7 @@ export default function MinecraftProxyDashboard() {
         console.log(`Restart error: ${err.message || err}`);
       }
     } finally {
+        console.log("Restart process completed");
       setIsRestarting(false);
     }
   }

@@ -160,6 +160,9 @@ func setupServerDir(dir string, port int, name string) error {
 motd=Dynamic Paper Server %d
 enable-command-block=true
 online-mode=false
+require-resource-pack=true
+resource-pack=https://download.mc-packs.net/pack/855a2657bde1aa92720b9869e1b80f11a5de2383.zip
+resource-pack-sha1=855a2657bde1aa92720b9869e1b80f11a5de2383
 `, port, port)
 
 	if err := os.WriteFile(filepath.Join(dir, "server.properties"), []byte(props), 0644); err != nil {
@@ -1541,3 +1544,5 @@ func main() {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
+
+// 2 Players request move at same time -> 2 Instances start of same type
